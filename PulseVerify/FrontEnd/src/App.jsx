@@ -1,9 +1,6 @@
-import React from 'react'
+import React from "react";
+import VaultPage from "./pages/VaultPage";
 
-const App = () => {
-  return (
-    <div>App</div>
-  )
+export default function App() {
+  return <VaultPage />;
 }
-
-export default App
