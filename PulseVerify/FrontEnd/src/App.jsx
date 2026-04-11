@@ -6,6 +6,7 @@ import VaultPage from "./pages/VaultPage";
 import DetectionMapPage from "./pages/DetectionMapPage";
 import EvidenceBoardPage from "./pages/EvidenceBoardPage";
 import DetectionPage from "./pages/DetectionPage";
+import CommunityShieldPage from "./pages/CommunityShieldPage";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/detection-map" element={<DetectionMapPage />} />
         <Route path="/evidence" element={<EvidenceBoardPage />} />
         <Route path="/detection" element={<DetectionPage />} />
+        <Route path="/community" element={<CommunityShieldPage />} />
       </Routes>
     </div>
   );

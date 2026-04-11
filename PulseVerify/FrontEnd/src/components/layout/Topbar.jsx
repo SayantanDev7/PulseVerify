@@ -6,6 +6,7 @@ const navLinks = [
   { label: "Vault", to: "/vault" },
   { label: "Detection Map", to: "/detection-map" },
   { label: "Evidence", to: "/evidence" },
+  { label: "Community", to: "/community" },
 ];
 
 export default function Topbar({ onUploadClick }) {

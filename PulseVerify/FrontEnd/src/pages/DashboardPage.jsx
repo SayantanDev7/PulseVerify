@@ -372,6 +372,45 @@ export default function DashboardPage() {
             <AssetGrid onAssetClick={(a) => console.log("Selected:", a)} />
           </div>
         </div>
+
+        {/* ── Community Shield — Top Protectors ──────────────── */}
+        <div className="mt-5 bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[16px]">🛡️</span>
+              <div>
+                <h2 className="text-[15px] font-semibold text-white">Community Shield — Top Protectors</h2>
+                <p className="text-[12px] text-zinc-500 mt-0.5">Fans helping fight piracy this week</p>
+              </div>
+            </div>
+            <Link to="/community" className="text-[12px] text-red-400 hover:text-red-300 font-medium transition-colors">
+              Join community →
+            </Link>
+          </div>
+          <div className="grid grid-cols-5 gap-3">
+            {[
+              { name: "Arjun M.", badge: "🏆", points: 4820, verified: 39 },
+              { name: "Sarah C.", badge: "🛡️", points: 3950, verified: 31 },
+              { name: "Raj P.", badge: "🛡️", points: 3210, verified: 27 },
+              { name: "Maria S.", badge: "⚡", points: 2780, verified: 22 },
+              { name: "Jake T.", badge: "⚡", points: 2340, verified: 19 },
+            ].map((u, i) => (
+              <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-zinc-800/40 border border-zinc-700/30 hover:bg-zinc-800/70 transition-colors">
+                <span className={`text-[14px] font-bold ${i === 0 ? "text-amber-400" : i === 1 ? "text-zinc-300" : "text-zinc-500"}`}>
+                  #{i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[12px] font-medium text-white truncate">{u.name}</span>
+                    <span className="text-[12px]">{u.badge}</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-500">{u.verified} verified</div>
+                </div>
+                <span className="text-[12px] font-bold text-amber-400">{u.points.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
 
       {/* Upload modal */}
