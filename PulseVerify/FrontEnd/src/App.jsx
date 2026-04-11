@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import VaultPage from "./pages/VaultPage";
 import DetectionMapPage from "./pages/DetectionMapPage";
 import EvidenceBoardPage from "./pages/EvidenceBoardPage";
+import DetectionPage from "./pages/DetectionPage";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/vault" element={<VaultPage />} />
         <Route path="/detection-map" element={<DetectionMapPage />} />
         <Route path="/evidence" element={<EvidenceBoardPage />} />
+        <Route path="/detection" element={<DetectionPage />} />
       </Routes>
     </div>
   );
