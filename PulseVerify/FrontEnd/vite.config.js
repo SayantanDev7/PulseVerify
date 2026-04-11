@@ -7,4 +7,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  optimizeDeps: {
+    include: [
+      'prop-types',
+      'react-is',
+      'react-simple-maps',
+      'recharts',
+    ],
+  },
 })
