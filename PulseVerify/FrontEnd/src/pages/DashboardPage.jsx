@@ -132,6 +132,7 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import Topbar from "../components/layout/Topbar";
 import AssetGrid from "../components/vault/AssetGrid";
 import UploadPortal from "../components/vault/UploadPortal";
@@ -250,8 +251,7 @@ export default function DashboardPage() {
   const [dismissed, setDismissed] = useState(new Set());
 
   const handleDismiss = (id) => {
-    setDismissed((prev) => new Set([...prev, id]));
-    setTimeout(() => setViolations((v) => v.filter((x) => x.id !== id)), 400);
+    setViolations((v) => v.filter((x) => x.id !== id));
   };
 
   return (
@@ -260,21 +260,30 @@ export default function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Page header */}
-        <div className="mb-8">
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
           <h1 className="text-[28px] font-bold tracking-tight text-white">
             Command Center
           </h1>
           <p className="text-[14px] text-zinc-500 mt-1">
             Real-time protection overview — {new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}
           </p>
-        </div>
+        </motion.div>
 
         {/* Stat cards */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           {initialStats.map((s, i) => (
-            <div
+            <motion.div
               key={i}
-              className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-all duration-200 group"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: i * 0.12, type: "spring", stiffness: 100 }}
+              whileHover={{ scale: 1.02, y: -2 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-colors duration-200 group cursor-default"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="text-[12px] text-zinc-500 font-medium leading-tight">{s.label}</div>
@@ -286,7 +295,7 @@ export default function DashboardPage() {
                 <AnimatedNumber target={s.value} />
               </div>
               <div className={`text-[12px] mt-2 font-medium ${s.hintColor}`}>{s.hint}</div>
-            </div>
+            </motion.div>
           ))}
         </div>
 
@@ -308,52 +317,62 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              {violations.map((v) => {
-                const cfg = levelConfig[v.level];
-                const isDismissed = dismissed.has(v.id);
-                return (
-                  <div
-                    key={v.id}
-                    className={`group flex items-center gap-3 px-3 py-3 rounded-xl border border-zinc-700/50 bg-zinc-800/40 ${cfg.ring} hover:bg-zinc-800 transition-all duration-200 ${isDismissed ? "opacity-0 scale-95" : "opacity-100 scale-100"}`}
-                    style={{ transition: "opacity 0.3s, transform 0.3s" }}
-                  >
-                    {/* Level dot */}
-                    <div className={`w-8 h-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
-                      <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium text-white truncate">{v.title}</div>
-                      <div className="text-[11px] text-zinc-500 mt-0.5">{v.meta}</div>
-                    </div>
-
-                    {/* Similarity score */}
-                    <div className="text-right shrink-0">
-                      <div className="text-[13px] font-bold text-white">{v.similarity}%</div>
-                      <div className="text-[10px] text-zinc-600">match</div>
-                    </div>
-
-                    {/* Badge */}
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${cfg.badge}`}>
-                      {v.level}
-                    </span>
-
-                    {/* Dismiss */}
-                    <button
-                      onClick={() => handleDismiss(v.id)}
-                      className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center shrink-0 transition-all"
+              <AnimatePresence mode="popLayout">
+                {violations.map((v) => {
+                  const cfg = levelConfig[v.level];
+                  return (
+                    <motion.div
+                      key={v.id}
+                      layout
+                      initial={{ opacity: 0, x: -40, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: 60, scale: 0.9 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      className={`group flex items-center gap-3 px-3 py-3 rounded-xl border border-zinc-700/50 bg-zinc-800/40 ${cfg.ring} hover:bg-zinc-800 transition-colors duration-200`}
                     >
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                        <path d="M1 1l10 10M11 1L1 11" stroke="#a1a1aa" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  </div>
-                );
-              })}
+                      {/* Level dot */}
+                      <div className={`w-8 h-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
+                        <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium text-white truncate">{v.title}</div>
+                        <div className="text-[11px] text-zinc-500 mt-0.5">{v.meta}</div>
+                      </div>
+
+                      {/* Similarity score */}
+                      <div className="text-right shrink-0">
+                        <div className="text-[13px] font-bold text-white">{v.similarity}%</div>
+                        <div className="text-[10px] text-zinc-600">match</div>
+                      </div>
+
+                      {/* Badge */}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${cfg.badge}`}>
+                        {v.level}
+                      </span>
+
+                      {/* Dismiss */}
+                      <button
+                        onClick={() => handleDismiss(v.id)}
+                        className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center shrink-0 transition-all"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                          <path d="M1 1l10 10M11 1L1 11" stroke="#a1a1aa" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
 
               {violations.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                  className="flex flex-col items-center justify-center py-10 text-center"
+                >
                   <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                       <path d="M9 12l2 2 4-4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -362,7 +381,7 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-[13px] font-medium text-zinc-400">No violations right now</p>
                   <p className="text-[12px] text-zinc-600 mt-1">All assets are secure</p>
-                </div>
+                </motion.div>
               )}
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 
 /* ── Animated counter ──────────────────────────────────────────── */
 function Counter({ target, suffix = "" }) {
@@ -203,7 +204,12 @@ export default function HomePage() {
 
         <div className="relative z-10 max-w-3xl mx-auto">
           {/* Badge */}
-          <div className="animate-fade-in-up inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-1.5 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, type: "spring" }}
+            className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-1.5 mb-8"
+          >
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
@@ -211,22 +217,37 @@ export default function HomePage() {
             <span className="text-[12px] font-medium text-zinc-400">
               Protecting sports media integrity
             </span>
-          </div>
+          </motion.div>
 
           {/* Headline */}
-          <h1 className="animate-fade-in-up stagger-1 text-[48px] md:text-[60px] font-bold leading-[1.08] tracking-tight">
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.15, type: "spring", stiffness: 80 }}
+            className="text-[48px] md:text-[60px] font-bold leading-[1.08] tracking-tight"
+          >
             <span className="gradient-text">Stop piracy.</span>
             <br />
             <span className="text-white">Protect your content.</span>
-          </h1>
+          </motion.h1>
 
-          <p className="animate-fade-in-up stagger-2 text-[17px] text-zinc-400 mt-6 max-w-xl mx-auto leading-relaxed">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="text-[17px] text-zinc-400 mt-6 max-w-xl mx-auto leading-relaxed"
+          >
             PulseVerify identifies, tracks, and flags unauthorized use of
             official sports media across the internet — in near real-time.
-          </p>
+          </motion.p>
 
           {/* CTAs */}
-          <div className="animate-fade-in-up stagger-3 flex items-center justify-center gap-4 mt-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.45 }}
+            className="flex items-center justify-center gap-4 mt-10"
+          >
             <Link
               to="/dashboard"
               className="group px-7 py-3 bg-red-500 hover:bg-red-400 text-white text-[14px] font-semibold rounded-xl shadow-lg shadow-red-500/25 active:scale-95 transition-all duration-200 flex items-center gap-2"
@@ -255,7 +276,7 @@ export default function HomePage() {
             >
               Learn more
             </a>
-          </div>
+          </motion.div>
         </div>
 
         {/* Floating shield decoration */}
@@ -270,21 +291,36 @@ export default function HomePage() {
       {/* ── Features ──────────────────────────────────────────── */}
       <section id="features" className="relative px-6 py-24 max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-[32px] font-bold tracking-tight text-white animate-fade-in-up">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.6 }}
+            className="text-[32px] font-bold tracking-tight text-white"
+          >
             Built for sports organizations
-          </h2>
-          <p className="text-[15px] text-zinc-500 mt-3 max-w-lg mx-auto animate-fade-in-up stagger-1">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="text-[15px] text-zinc-500 mt-3 max-w-lg mx-auto"
+          >
             End-to-end content protection — from upload to takedown.
-          </p>
+          </motion.p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5">
           {features.map((f, i) => (
-            <div
+            <motion.div
               key={f.title}
-              className={`animate-fade-in-up stagger-${
-                i + 2
-              } group bg-zinc-900 border border-zinc-800 rounded-2xl p-7 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all duration-300`}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.5, delay: i * 0.15, type: "spring", stiffness: 100 }}
+              whileHover={{ y: -6, scale: 1.02 }}
+              className="group bg-zinc-900 border border-zinc-800 rounded-2xl p-7 hover:border-zinc-700 hover:bg-zinc-900/80 transition-colors duration-300"
             >
               <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
                 {f.icon}
@@ -295,7 +331,7 @@ export default function HomePage() {
               <p className="text-[13px] text-zinc-500 leading-relaxed">
                 {f.desc}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
@@ -317,11 +353,13 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {steps.map((s, i) => (
-              <div
+              <motion.div
                 key={s.num}
-                className={`animate-fade-in-up stagger-${
-                  i + 1
-                } relative flex flex-col items-start`}
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 0.6, delay: i * 0.2, type: "spring", stiffness: 80 }}
+                className="relative flex flex-col items-start"
               >
                 {/* Step number */}
                 <div className="text-[52px] font-bold text-zinc-800 leading-none mb-4 select-none">
@@ -356,7 +394,7 @@ export default function HomePage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -366,11 +404,13 @@ export default function HomePage() {
       <section className="px-6 py-20">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {stats.map((s, i) => (
-            <div
+            <motion.div
               key={s.label}
-              className={`animate-fade-in-up stagger-${
-                i + 1
-              } text-center py-6`}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.5, delay: i * 0.1, type: "spring", stiffness: 120 }}
+              className="text-center py-6"
             >
               <div className="text-[40px] font-bold text-white tracking-tight">
                 <Counter target={s.value} suffix={s.suffix} />
@@ -378,7 +418,7 @@ export default function HomePage() {
               <div className="text-[13px] text-zinc-500 mt-1 font-medium">
                 {s.label}
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>

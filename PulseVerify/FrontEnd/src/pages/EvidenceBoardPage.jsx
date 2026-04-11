@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Topbar from "../components/layout/Topbar";
 
 /* ── Mock evidence data ────────────────────────────────────────── */
@@ -186,16 +187,22 @@ export default function EvidenceBoardPage() {
 
         {/* Evidence cards */}
         <div className="flex flex-col gap-4">
-          {filtered.map((c, i) => {
-            const cfg = levelConfig[c.level];
-            const sCfg = statusConfig[c.status];
-            const isExpanded = expanded === c.id;
+          <AnimatePresence mode="popLayout">
+            {filtered.map((c, i) => {
+              const cfg = levelConfig[c.level];
+              const sCfg = statusConfig[c.status];
+              const isExpanded = expanded === c.id;
 
-            return (
-              <div
-                key={c.id}
-                className={`animate-fade-in-up stagger-${Math.min(i + 1, 6)} bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all duration-300`}
-              >
+              return (
+                <motion.div
+                  key={c.id}
+                  layout
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 28, delay: i * 0.06 }}
+                  className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-colors duration-300"
+                >
                 {/* Main row */}
                 <div
                   className="flex items-center gap-5 p-5 cursor-pointer"
@@ -274,8 +281,16 @@ export default function EvidenceBoardPage() {
                 </div>
 
                 {/* Expandable detail */}
-                {isExpanded && (
-                  <div className="animate-fade-in border-t border-zinc-800 px-5 py-5 bg-zinc-900/50">
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="border-t border-zinc-800 px-5 py-5 bg-zinc-900/50">
                     <div className="grid md:grid-cols-3 gap-6">
                       {/* AI Report */}
                       <div className="md:col-span-2">
@@ -375,11 +390,14 @@ export default function EvidenceBoardPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
         </div>
 
         {/* Empty state */}

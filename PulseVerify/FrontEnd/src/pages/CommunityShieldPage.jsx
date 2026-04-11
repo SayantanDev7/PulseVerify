@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import Topbar from "../components/layout/Topbar";
 
 /* ── Mock leaderboard data ─────────────────────────────────────── */
@@ -113,15 +114,23 @@ export default function CommunityShieldPage() {
             { step: "01", icon: "🔗", title: "Report a link", desc: "Spot pirated content? Submit the URL and platform." },
             { step: "02", icon: "🤖", title: "AI verifies", desc: "Our AI compares it against registered assets using Pulse ID fingerprinting." },
             { step: "03", icon: "⭐", title: "Earn rewards", desc: "Verified reports earn points, badges, and leaderboard rank." },
-          ].map((s) => (
-            <div key={s.step} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-colors">
+          ].map((s, i) => (
+            <motion.div
+              key={s.step}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.5, delay: i * 0.12, type: "spring", stiffness: 120 }}
+              whileHover={{ y: -4, scale: 1.02 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-colors"
+            >
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-[20px]">{s.icon}</span>
                 <span className="text-[32px] font-bold text-zinc-800 leading-none select-none">{s.step}</span>
               </div>
               <h3 className="text-[14px] font-semibold text-white mb-1">{s.title}</h3>
               <p className="text-[12px] text-zinc-500 leading-relaxed">{s.desc}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
 

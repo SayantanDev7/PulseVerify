@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Topbar from "../components/layout/Topbar";
 import UploadPortal from "../components/vault/UploadPortal";
 import { assets as initialAssets } from "../features/assets/assetData";
@@ -145,14 +146,21 @@ export default function VaultPage() {
         </div>
 
         {/* Asset grid */}
-        <div className="animate-fade-in-up stagger-3 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((a, i) => {
-            const cfg = statusConfig[a.status];
-            return (
-              <div
-                key={a.id}
-                className={`animate-fade-in-up stagger-${Math.min(i + 1, 6)} group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 hover:shadow-lg hover:shadow-zinc-900/50 transition-all duration-300`}
-              >
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((a, i) => {
+              const cfg = statusConfig[a.status];
+              return (
+                <motion.div
+                  key={a.id}
+                  layout
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: "spring", stiffness: 250, damping: 25, delay: i * 0.05 }}
+                  whileHover={{ y: -4 }}
+                  className="group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 hover:shadow-lg hover:shadow-zinc-900/50 transition-colors duration-300"
+                >
                 {/* Thumbnail */}
                 <div className="relative h-44 bg-zinc-800 overflow-hidden">
                   <img
@@ -200,9 +208,10 @@ export default function VaultPage() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
         </div>
 
         {/* Empty state */}
