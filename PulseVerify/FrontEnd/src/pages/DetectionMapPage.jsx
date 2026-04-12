@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef} from "react";
 import Topbar from "../components/layout/Topbar";
 import {
   ComposableMap,
@@ -44,8 +44,8 @@ const detections = [
 /* ── Color config ──────────────────────────────────────────────── */
 const levelColors = {
   Critical: { fill: "#ef4444", text: "text-red-400", badge: "bg-red-500/10 text-red-400 border-red-500/20", dot: "bg-red-500" },
-  Medium:   { fill: "#fbbf24", text: "text-amber-400", badge: "bg-amber-400/10 text-amber-400 border-amber-400/20", dot: "bg-amber-400" },
-  Low:      { fill: "#60a5fa", text: "text-blue-400", badge: "bg-blue-400/10 text-blue-400 border-blue-400/20", dot: "bg-blue-400" },
+  Medium: { fill: "#fbbf24", text: "text-amber-400", badge: "bg-amber-400/10 text-amber-400 border-amber-400/20", dot: "bg-amber-400" },
+  Low: { fill: "#60a5fa", text: "text-blue-400", badge: "bg-blue-400/10 text-blue-400 border-blue-400/20", dot: "bg-blue-400" },
 };
 
 /* ── Recharts: violations over 7 days ──────────────────────────── */
@@ -108,6 +108,7 @@ export default function DetectionMapPage() {
   const [selected, setSelected] = useState(null);
   const [hoveredMarker, setHoveredMarker] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const mapRef = useRef(null);
 
   /* region-count map (for heatmap coloring) */
   const countryViolations = useMemo(() => {
@@ -130,6 +131,16 @@ export default function DetectionMapPage() {
 
   /* Business insight */
   const topRegion = regionData.reduce((a, b) => (a.value > b.value ? a : b));
+
+  const toggleFullscreen = () => {
+    if (!mapRef.current) return;
+
+    if (!document.fullscreenElement) {
+      mapRef.current.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-[Lexend,sans-serif]">
@@ -216,62 +227,84 @@ export default function DetectionMapPage() {
 
               {/* react-simple-maps world */}
               <div className="relative">
-                <ComposableMap
-                  projection="geoNaturalEarth1"
-                  projectionConfig={{ scale: 160 }}
-                  style={{ width: "100%", height: "auto" }}
-                  width={800}
-                  height={400}
-                >
-                  <ZoomableGroup center={[40, 15]} zoom={1}>
-                    <Geographies geography={GEO_URL}>
-                      {({ geographies }) =>
-                        geographies.map((geo) => (
-                          <Geography
-                            key={geo.rsmKey}
-                            geography={geo}
-                            fill={getCountryFill(geo)}
-                            stroke="#27272a"
-                            strokeWidth={0.4}
-                            style={{
-                              default: { outline: "none" },
-                              hover: { outline: "none", fill: "#3f3f46", cursor: "pointer" },
-                              pressed: { outline: "none" },
-                            }}
-                          />
-                        ))
-                      }
-                    </Geographies>
+                <div ref={mapRef} style={{ position: "relative", width: "100%" }}>
+  <ComposableMap
+    projection="geoNaturalEarth1"
+    projectionConfig={{ scale: 160 }}
+    style={{ width: "100%", height: "auto" }}
+    width={800}
+    height={400}
+  >
+    <ZoomableGroup center={[40, 15]} zoom={1}>
+      <Geographies geography={GEO_URL}>
+        {({ geographies }) =>
+          geographies.map((geo) => (
+            <Geography
+              key={geo.rsmKey}
+              geography={geo}
+              fill={getCountryFill(geo)}
+              stroke="#27272a"
+              strokeWidth={0.4}
+              style={{
+                default: { outline: "none" },
+                hover: { outline: "none", fill: "#3f3f46", cursor: "pointer" },
+                pressed: { outline: "none" },
+              }}
+            />
+          ))
+        }
+      </Geographies>
 
-                    {/* Violation markers */}
-                    {detections.map((d) => {
-                      const cfg = levelColors[d.level];
-                      return (
-                        <Marker
-                          key={d.id}
-                          coordinates={d.coords}
-                          onClick={() => setSelected(d)}
-                          onMouseEnter={() => setHoveredMarker(d)}
-                          onMouseLeave={() => setHoveredMarker(null)}
-                        >
-                          {/* Pulse ring */}
-                          <circle r={6} fill={cfg.fill} opacity={0.2}>
-                            <animate attributeName="r" values="4;10;4" dur="2.5s" repeatCount="indefinite" />
-                            <animate attributeName="opacity" values="0.3;0.05;0.3" dur="2.5s" repeatCount="indefinite" />
-                          </circle>
-                          {/* Solid dot */}
-                          <circle
-                            r={3.5}
-                            fill={cfg.fill}
-                            stroke="#09090b"
-                            strokeWidth={1}
-                            className="cursor-pointer"
-                          />
-                        </Marker>
-                      );
-                    })}
-                  </ZoomableGroup>
-                </ComposableMap>
+      {detections.map((d) => {
+        const cfg = levelColors[d.level];
+        return (
+          <Marker
+            key={d.id}
+            coordinates={d.coords}
+            onClick={() => setSelected(d)}
+            onMouseEnter={() => setHoveredMarker(d)}
+            onMouseLeave={() => setHoveredMarker(null)}
+          >
+            <circle r={6} fill={cfg.fill} opacity={0.2}>
+              <animate attributeName="r" values="4;10;4" dur="2.5s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.3;0.05;0.3" dur="2.5s" repeatCount="indefinite" />
+            </circle>
+
+            <circle
+              r={3.5}
+              fill={cfg.fill}
+              stroke="#09090b"
+              strokeWidth={1}
+              className="cursor-pointer"
+            />
+          </Marker>
+        );
+      })}
+    </ZoomableGroup>
+  </ComposableMap>
+
+  {/* ✅ Bottom-right icon */}
+  <div
+    onClick={toggleFullscreen}
+    style={{
+      position: "absolute",
+      bottom: "10px",
+      right: "10px",
+      opacity: 0.6,
+      cursor: "pointer"
+    }}
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="white"
+    >
+      <path d="M8 3V5H4V9H2V3H8ZM2 21V15H4V19H8V21H2ZM22 21H16V19H20V15H22V21ZM22 9H20V5H16V3H22V9Z"></path>
+    </svg>
+  </div>
+</div>
 
                 {/* Hover tooltip */}
                 {hoveredMarker && (
@@ -343,11 +376,10 @@ export default function DetectionMapPage() {
                     <button
                       key={d.id}
                       onClick={() => setSelected(d)}
-                      className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-200 ${
-                        isSelected
+                      className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-200 ${isSelected
                           ? "bg-zinc-800 border-zinc-600"
                           : "bg-zinc-800/30 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700"
-                      }`}
+                        }`}
                     >
                       <div className={`w-7 h-7 rounded-lg ${d.level === "Critical" ? "bg-red-500/10" : d.level === "Medium" ? "bg-amber-400/10" : "bg-blue-400/10"} flex items-center justify-center shrink-0`}>
                         <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
