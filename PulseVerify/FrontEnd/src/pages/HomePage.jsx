@@ -226,7 +226,7 @@ export default function HomePage() {
             transition={{ duration: 0.7, delay: 0.15, type: "spring", stiffness: 80 }}
             className="text-[48px] md:text-[60px] font-bold leading-[1.08] tracking-tight"
           >
-            <span className="gradient-text">Stop piracy.</span>
+            <span className="text-white">Stop piracy.</span>
             <br />
             <span className="text-white">Protect your content.</span>
           </motion.h1>
