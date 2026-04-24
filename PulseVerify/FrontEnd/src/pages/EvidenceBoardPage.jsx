@@ -2,99 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Topbar from "../components/layout/Topbar";
 
-/* ── Mock evidence data ────────────────────────────────────────── */
-const evidenceCases = [
-  {
-    id: 1,
-    originalTitle: "IPL 2025 Final Highlights",
-    originalThumb:
-      "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=400&h=225&fit=crop",
-    detectedTitle: "IPL Final highlights — Telegram",
-    detectedThumb:
-      "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=400&h=225&fit=crop&q=60",
-    platform: "Telegram",
-    similarity: 98,
-    level: "Critical",
-    detectedAt: "2026-04-10 · 11:56 PM",
-    pulseId: "PV-402-A91X",
-    aiConfidence: 97.4,
-    modifications: ["Re-encoded (H.264 → H.265)", "Watermark removed", "Cropped 5%"],
-    sourceUrl: "t.me/sports_hq/4891",
-    status: "open",
-  },
-  {
-    id: 2,
-    originalTitle: "Press Conference — Post Match",
-    originalThumb:
-      "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&h=225&fit=crop",
-    detectedTitle: "Match replay — YouTube",
-    detectedThumb:
-      "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&h=225&fit=crop&q=60",
-    platform: "YouTube",
-    similarity: 94,
-    level: "Critical",
-    detectedAt: "2026-04-10 · 11:37 PM",
-    pulseId: "PV-411-C33M",
-    aiConfidence: 93.1,
-    modifications: ["Mirrored horizontally", "Audio replaced", "Resolution downscaled"],
-    sourceUrl: "youtube.com/watch?v=abc123",
-    status: "open",
-  },
-  {
-    id: 3,
-    originalTitle: "Official Match Thumbnail Pack",
-    originalThumb:
-      "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=400&h=225&fit=crop",
-    detectedTitle: "Official thumbnail — Instagram",
-    detectedThumb:
-      "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=400&h=225&fit=crop&q=60",
-    platform: "Instagram",
-    similarity: 81,
-    level: "Medium",
-    detectedAt: "2026-04-10 · 11:21 PM",
-    pulseId: "PV-418-T55Z",
-    aiConfidence: 80.2,
-    modifications: ["Color grading changed", "Text overlay added", "Cropped 15%"],
-    sourceUrl: "instagram.com/p/xyz789",
-    status: "open",
-  },
-  {
-    id: 4,
-    originalTitle: "Training Session — Day 3",
-    originalThumb:
-      "https://images.unsplash.com/photo-1599474924187-334a4ae5bd3c?w=400&h=225&fit=crop",
-    detectedTitle: "Training session clip — Reddit",
-    detectedThumb:
-      "https://images.unsplash.com/photo-1599474924187-334a4ae5bd3c?w=400&h=225&fit=crop&q=60",
-    platform: "Reddit",
-    similarity: 76,
-    level: "Medium",
-    detectedAt: "2026-04-10 · 10:56 PM",
-    pulseId: "PV-430-R88B",
-    aiConfidence: 75.8,
-    modifications: ["Speed changed (1.25x)", "Intro/outro trimmed"],
-    sourceUrl: "reddit.com/r/sports/comments/abc123",
-    status: "resolved",
-  },
-  {
-    id: 5,
-    originalTitle: "Team Entrance — Opening Ceremony",
-    originalThumb:
-      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400&h=225&fit=crop",
-    detectedTitle: "Ceremony footage repost — TikTok",
-    detectedThumb:
-      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400&h=225&fit=crop&q=60",
-    platform: "TikTok",
-    similarity: 89,
-    level: "Critical",
-    detectedAt: "2026-04-10 · 09:12 PM",
-    pulseId: "PV-405-H72K",
-    aiConfidence: 88.7,
-    modifications: ["Vertical crop (16:9 → 9:16)", "Music overlay", "Logo blurred"],
-    sourceUrl: "tiktok.com/@user/video/123",
-    status: "takedown_sent",
-  },
-];
+import { useViolations } from "../hooks/useViolations";
 
 const levelConfig = {
   Critical: {
@@ -121,7 +29,7 @@ const statusConfig = {
 const filterOptions = ["All", "open", "takedown_sent", "resolved"];
 
 export default function EvidenceBoardPage() {
-  const [cases, setCases] = useState(evidenceCases);
+  const { violations: cases, loading, error, refetch } = useViolations();
   const [expanded, setExpanded] = useState(null);
   const [filter, setFilter] = useState("All");
   const [showUpload, setShowUpload] = useState(false);

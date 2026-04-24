@@ -25,21 +25,7 @@ import {
 /* ── World topo json (public CDN) ─────────────────────────────── */
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-/* ── Mock detection data with real lat/lng ─────────────────────── */
-const detections = [
-  { id: 1, title: "IPL Final broadcast clip", platform: "Telegram", region: "South Asia", country: "India", city: "Mumbai", similarity: 98, level: "Critical", time: "4 min ago", coords: [72.8777, 19.076] },
-  { id: 2, title: "Match replay full stream", platform: "YouTube", region: "Southeast Asia", country: "Indonesia", city: "Jakarta", similarity: 94, level: "Critical", time: "19 min ago", coords: [106.8456, -6.2088] },
-  { id: 3, title: "Official thumbnail repost", platform: "Instagram", region: "Middle East", country: "UAE", city: "Dubai", similarity: 81, level: "Medium", time: "35 min ago", coords: [55.2708, 25.2048] },
-  { id: 4, title: "Training session clip", platform: "Reddit", region: "North America", country: "USA", city: "New York", similarity: 76, level: "Medium", time: "1 hr ago", coords: [-74.006, 40.7128] },
-  { id: 5, title: "Trophy ceremony — cropped", platform: "Twitter/X", region: "Europe", country: "UK", city: "London", similarity: 88, level: "Critical", time: "2 hr ago", coords: [-0.1276, 51.5074] },
-  { id: 6, title: "Player interview segment", platform: "Facebook", region: "Africa", country: "Nigeria", city: "Lagos", similarity: 72, level: "Low", time: "4 hr ago", coords: [3.3792, 6.5244] },
-  { id: 7, title: "Match highlights reel", platform: "TikTok", region: "East Asia", country: "Japan", city: "Tokyo", similarity: 91, level: "Critical", time: "5 hr ago", coords: [139.6917, 35.6895] },
-  { id: 8, title: "Fan-cam reupload", platform: "Telegram", region: "South Asia", country: "India", city: "Delhi", similarity: 85, level: "Critical", time: "6 hr ago", coords: [77.1025, 28.7041] },
-  { id: 9, title: "Promo clip — flipped", platform: "YouTube", region: "South America", country: "Brazil", city: "São Paulo", similarity: 79, level: "Medium", time: "8 hr ago", coords: [-46.6333, -23.5505] },
-  { id: 10, title: "Post-match celebration", platform: "Instagram", region: "Europe", country: "Germany", city: "Berlin", similarity: 83, level: "Medium", time: "10 hr ago", coords: [13.405, 52.52] },
-  { id: 11, title: "Commentary overlay clip", platform: "TikTok", region: "South Asia", country: "Pakistan", city: "Karachi", similarity: 77, level: "Medium", time: "12 hr ago", coords: [67.0011, 24.8607] },
-  { id: 12, title: "Condensed match stream", platform: "Facebook", region: "Southeast Asia", country: "Philippines", city: "Manila", similarity: 90, level: "Critical", time: "14 hr ago", coords: [120.9842, 14.5995] },
-];
+import { useViolations } from "../hooks/useViolations";
 
 /* ── Color config ──────────────────────────────────────────────── */
 const levelColors = {
@@ -109,13 +95,16 @@ export default function DetectionMapPage() {
   const [hoveredMarker, setHoveredMarker] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const mapRef = useRef(null);
+  const { violations: detections, loading, error } = useViolations();
 
   /* region-count map (for heatmap coloring) */
   const countryViolations = useMemo(() => {
     const map = {};
-    detections.forEach((d) => {
-      map[d.country] = (map[d.country] || 0) + 1;
-    });
+    if (detections) {
+      detections.forEach((d) => {
+        map[d.country] = (map[d.country] || 0) + 1;
+      });
+    }
     return map;
   }, []);
 

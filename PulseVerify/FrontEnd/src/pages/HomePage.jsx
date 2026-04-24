@@ -161,7 +161,7 @@ export default function HomePage() {
             item === "Dashboard" ? (
               <Link
                 key={item}
-                to="/dashboard"
+                to="/login"
                 className="px-3.5 py-1.5 text-[13px] font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-lg transition-all duration-150"
               >
                 {item}
@@ -186,7 +186,7 @@ export default function HomePage() {
             Sign in
           </Link>
           <Link
-            to="/dashboard"
+            to="/login"
             className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white text-[13px] font-semibold rounded-lg shadow-md shadow-red-500/20 active:scale-95 transition-all duration-150"
           >
             Get Started
@@ -249,7 +249,7 @@ export default function HomePage() {
             className="flex items-center justify-center gap-4 mt-10"
           >
             <Link
-              to="/dashboard"
+              to="/login"
               className="group px-7 py-3 bg-red-500 hover:bg-red-400 text-white text-[14px] font-semibold rounded-xl shadow-lg shadow-red-500/25 active:scale-95 transition-all duration-200 flex items-center gap-2"
             >
               Open Command Center
@@ -436,7 +436,7 @@ export default function HomePage() {
             Start monitoring in under 2 minutes. No credit card required.
           </p>
           <Link
-            to="/dashboard"
+            to="/login"
             className="relative inline-flex items-center gap-2 px-7 py-3 bg-red-500 hover:bg-red-400 text-white text-[14px] font-semibold rounded-xl shadow-lg shadow-red-500/25 active:scale-95 transition-all duration-200"
           >
             <ShieldIcon size={14} className="text-white" />

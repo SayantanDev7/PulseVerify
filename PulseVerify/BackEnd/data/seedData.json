@@ -1,0 +1,196 @@
+{
+  "assets": [
+    {
+      "url": "https://pulseverify.test/official/premier-league-final-1.mp4",
+      "pHash": "01010101010101010101010101010101",
+      "uploaderId": "SEED_ADMIN",
+      "aiAnalysis": {
+        "isOfficial": true,
+        "confidence": 100,
+        "reasoning": "Official broadcast master file"
+      },
+      "status": "Verified",
+      "metadata": {
+        "format": "video/mp4",
+        "size": 15000000,
+        "league": "Premier League"
+      }
+    },
+    {
+      "url": "https://pulseverify.test/official/nba-finals-game7.mp4",
+      "pHash": "10101010101010101010101010101010",
+      "uploaderId": "SEED_ADMIN",
+      "aiAnalysis": {
+        "isOfficial": true,
+        "confidence": 100,
+        "reasoning": "Official broadcast master file"
+      },
+      "status": "Verified",
+      "metadata": {
+        "format": "video/mp4",
+        "size": 25000000,
+        "league": "NBA"
+      }
+    },
+    {
+      "url": "https://pulseverify.test/official/f1-monaco-gp-highlights.mp4",
+      "pHash": "11110000111100001111000011110000",
+      "uploaderId": "SEED_ADMIN",
+      "aiAnalysis": {
+        "isOfficial": true,
+        "confidence": 100,
+        "reasoning": "Official broadcast master file"
+      },
+      "status": "Verified",
+      "metadata": {
+        "format": "video/mp4",
+        "size": 12000000,
+        "league": "Formula 1"
+      }
+    },
+    {
+      "url": "https://pulseverify.test/official/wimbledon-final.mp4",
+      "pHash": "00001111000011110000111100001111",
+      "uploaderId": "SEED_ADMIN",
+      "aiAnalysis": {
+        "isOfficial": true,
+        "confidence": 100,
+        "reasoning": "Official broadcast master file"
+      },
+      "status": "Verified",
+      "metadata": {
+        "format": "video/mp4",
+        "size": 18000000,
+        "league": "Wimbledon"
+      }
+    },
+    {
+      "url": "https://pulseverify.test/official/super-bowl-lviii.mp4",
+      "pHash": "11001100110011001100110011001100",
+      "uploaderId": "SEED_ADMIN",
+      "aiAnalysis": {
+        "isOfficial": true,
+        "confidence": 100,
+        "reasoning": "Official broadcast master file"
+      },
+      "status": "Verified",
+      "metadata": {
+        "format": "video/mp4",
+        "size": 35000000,
+        "league": "NFL"
+      }
+    }
+  ],
+  "violations": [
+    {
+      "suspectUrl": "https://youtube.com/watch?v=mock1",
+      "pHashDistance": 2,
+      "confidence": 98.5,
+      "status": "Open",
+      "platform": "YouTube",
+      "aiContext": "High visual similarity to master asset. Logos match despite minor compression artifacts.",
+      "coordinates": [-0.1276, 51.5074],
+      "country": "UK",
+      "city": "London"
+    },
+    {
+      "suspectUrl": "https://t.me/mockstream/405",
+      "pHashDistance": 4,
+      "confidence": 95.2,
+      "status": "Under Review",
+      "platform": "Telegram",
+      "aiContext": "Matches official jerseys and gameplay, but video is cropped by 15% and has a custom watermark overlaid.",
+      "coordinates": [72.8777, 19.0760],
+      "country": "India",
+      "city": "Mumbai"
+    },
+    {
+      "suspectUrl": "https://tiktok.com/@mockuser/video1",
+      "pHashDistance": 8,
+      "confidence": 88.0,
+      "status": "Takedown Issued",
+      "platform": "TikTok",
+      "aiContext": "Video aspect ratio changed to 9:16. Audio signature matches official broadcast commentary.",
+      "coordinates": [106.8456, -6.2088],
+      "country": "Indonesia",
+      "city": "Jakarta"
+    },
+    {
+      "suspectUrl": "https://instagram.com/p/mockpost",
+      "pHashDistance": 12,
+      "confidence": 82.1,
+      "status": "Resolved",
+      "platform": "Instagram",
+      "aiContext": "Image flipped horizontally and heavy color filter applied. Player faces and kit sponsors still identifiable.",
+      "coordinates": [55.2708, 25.2048],
+      "country": "UAE",
+      "city": "Dubai"
+    },
+    {
+      "suspectUrl": "https://facebook.com/watch/?v=mock5",
+      "pHashDistance": 5,
+      "confidence": 94.8,
+      "status": "Open",
+      "platform": "Facebook",
+      "aiContext": "Direct stream rip. Identical frame sequence found in master asset timestamp 01:24:00.",
+      "coordinates": [-74.0060, 40.7128],
+      "country": "USA",
+      "city": "New York"
+    },
+    {
+      "suspectUrl": "https://reddit.com/r/sports/mock6",
+      "pHashDistance": 18,
+      "confidence": 75.4,
+      "status": "Dismissed",
+      "platform": "Reddit",
+      "aiContext": "Short 3-second clip under fair use conditions. Heavy commentary overlay.",
+      "coordinates": [-118.2437, 34.0522],
+      "country": "USA",
+      "city": "Los Angeles"
+    },
+    {
+      "suspectUrl": "https://x.com/mockuser/status/mock7",
+      "pHashDistance": 3,
+      "confidence": 97.1,
+      "status": "Takedown Issued",
+      "platform": "Twitter/X",
+      "aiContext": "Near exact match to master asset. Slight bitrate reduction detected.",
+      "coordinates": [13.4050, 52.5200],
+      "country": "Germany",
+      "city": "Berlin"
+    },
+    {
+      "suspectUrl": "https://youtube.com/watch?v=mock8",
+      "pHashDistance": 7,
+      "confidence": 91.5,
+      "status": "Under Review",
+      "platform": "YouTube",
+      "aiContext": "Contains 45 seconds of contiguous official footage within a 10-minute compilation video.",
+      "coordinates": [139.6917, 35.6895],
+      "country": "Japan",
+      "city": "Tokyo"
+    },
+    {
+      "suspectUrl": "https://t.me/sports_pirate/11",
+      "pHashDistance": 1,
+      "confidence": 99.8,
+      "status": "Open",
+      "platform": "Telegram",
+      "aiContext": "Identical match. Zero modifications detected.",
+      "coordinates": [2.3522, 48.8566],
+      "country": "France",
+      "city": "Paris"
+    },
+    {
+      "suspectUrl": "https://tiktok.com/@sportsfanatic/video2",
+      "pHashDistance": 14,
+      "confidence": 79.9,
+      "status": "Open",
+      "platform": "TikTok",
+      "aiContext": "Video is cropped and has background music added. Official watermark is blurred out.",
+      "coordinates": [-46.6333, -23.5505],
+      "country": "Brazil",
+      "city": "São Paulo"
+    }
+  ]
+}

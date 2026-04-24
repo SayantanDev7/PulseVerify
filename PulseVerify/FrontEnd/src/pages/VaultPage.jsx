@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Topbar from "../components/layout/Topbar";
 import UploadPortal from "../components/vault/UploadPortal";
-import { assets as initialAssets } from "../features/assets/assetData";
+import { useAssets } from "../hooks/useAssets";
 
 const statusConfig = {
   Secure: {
@@ -24,7 +24,7 @@ const statusFilters = ["All", "Secure", "Scanning", "Violated"];
 
 export default function VaultPage() {
   const [showUpload, setShowUpload] = useState(false);
-  const [assets, setAssets] = useState(initialAssets);
+  const { assets, loading, error, refetch } = useAssets();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -229,12 +229,11 @@ export default function VaultPage() {
         )}
       </main>
 
-      {/* Upload modal */}
       {showUpload && (
         <UploadPortal
           onClose={() => setShowUpload(false)}
-          onUploaded={(asset) => {
-            setAssets((prev) => [asset, ...prev]);
+          onUploaded={() => {
+            refetch();
             setShowUpload(false);
           }}
         />

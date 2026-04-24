@@ -1,17 +1,38 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "../utils/axios";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate login delay
-    setTimeout(() => setLoading(false), 2000);
+    
+    try {
+      // In a real app, you would sign in with Firebase Client SDK here
+      // const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // const token = await userCredential.user.getIdToken();
+      
+      // For prototype: we assume the user obtained a token and stored it. 
+      // Assuming utils/axios already intercepts and attaches the token if it exists.
+      // If no real Firebase client is set up, this will fail unless a token is manually put in localStorage.
+      
+      // Calling the backend to verify and register
+      const response = await axios.post("/api/auth/verify", { email });
+      
+      // Redirect to vault regardless of new or returning (handled seamlessly)
+      navigate("/vault");
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert("Authentication failed. Ensure your Firebase token is valid in localStorage.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
