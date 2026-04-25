@@ -6,6 +6,9 @@ const violationSchema = new mongoose.Schema({
     ref: 'Asset', 
     required: true 
   },
+  masterAssetUrl: {
+    type: String
+  },
   suspectUrl: { 
     type: String, 
     required: true 
@@ -24,7 +27,7 @@ const violationSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ['Open', 'Under Review', 'Takedown Issued', 'Resolved'], 
+    enum: ['Open', 'Under Review', 'Takedown Issued', 'Resolved', 'Dismissed'], 
     default: 'Open' 
   },
   platform: { 

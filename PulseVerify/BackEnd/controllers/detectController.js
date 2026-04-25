@@ -1,125 +1,162 @@
-import Asset from '../models/Asset.js';
-import Violation from '../models/Violation.js';
-import { generatePHash, calculateHammingDistance } from '../services/hashService.js';
-import admin from 'firebase-admin';
-
-export const detectViolation = async (req, res) => {
-  try {
-    const { suspectUrl, platform } = req.body;
-
-    if (!suspectUrl) {
-      return res.status(400).json({ message: "suspectUrl is required" });
-    }
-
-    res.status(200).json({ 
-      message: "Detection scan started.", 
-      mocked: true,
-      status: "Processing"
-    });
-    
-    // Skip real background processing for seed data prototype
-    console.log(`Mock processing detection for ${suspectUrl}`);
-    
-  } catch (error) {
-    console.error("Detection error:", error);
-    res.status(500).json({ message: "Server error during detection" });
-  }
-};
-
-const runDetectionBackground = async (suspectUrl, platform) => {
-  try {
-    console.log(`Scanning suspect URL: ${suspectUrl}`);
-    const suspectHash = await generatePHash(suspectUrl);
-
-    // Get all verified master assets
-    // In a production system, you'd use a specialized vector DB or BK-Tree. 
-    // For now, we do a linear scan since the DB is small.
-    const masterAssets = await Asset.find({ status: 'Verified', pHash: { $ne: 'hash_failed' } });
-
-    let bestMatch = null;
-    let minDistance = Infinity;
-
-    // Threshold for pHash similarity (usually <= 10 out of 64 bits is a good match for variations)
-    const MATCH_THRESHOLD = 15;
-
-    for (const asset of masterAssets) {
-      try {
-        const dist = calculateHammingDistance(suspectHash, asset.pHash);
-        if (dist < minDistance && dist <= MATCH_THRESHOLD) {
-          minDistance = dist;
-          bestMatch = asset;
-        }
-      } catch (err) {
-        // Skip comparing if hash lengths differ or there's an issue
-        continue;
-      }
-    }
-
-    if (bestMatch) {
-      console.log(`Violation found! Matches master asset ${bestMatch._id} with distance ${minDistance}`);
-      
-      // Calculate a rough confidence score (0 distance = 100%, MATCH_THRESHOLD distance = ~70%)
-      const confidence = Math.max(0, 100 - (minDistance * (30 / MATCH_THRESHOLD)));
-
-      const newViolation = await Violation.create({
-        masterAssetId: bestMatch._id,
-        suspectUrl,
-        pHashDistance: minDistance,
-        confidence: confidence,
-        platform: platform || 'Unknown',
-        aiContext: "Matched via Perceptual Hash"
-      });
-
-      // 🔥 Real-time Push to Firestore AlertContext
-      const db = admin.firestore();
-      await db.collection('violations').doc(newViolation._id.toString()).set({
-        ...newViolation.toObject(),
-        detectedAt: admin.firestore.FieldValue.serverTimestamp(),
-        masterAssetUrl: bestMatch.url // Send master URL for frontend UI display
-      });
-
-      console.log("Violation alert pushed to Firestore.");
-    } else {
-      console.log("No matching master assets found for the suspect URL.");
-    }
-  } catch (err) {
-    console.error("Background detection failed:", err);
-  }
-};
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
+import Asset from '../models/Asset.js';
+import Violation from '../models/Violation.js';
+import { generatePHash, calculateHammingDistance } from '../services/hashService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const seedDataPath = path.join(__dirname, '../data/seedData.json');
 
+// ── Helper: read seed data safely ───────────────────────────────────────────
 const getSeedData = () => {
   const data = fs.readFileSync(seedDataPath, 'utf-8');
   return JSON.parse(data);
 };
 
-export const getAllViolations = async (req, res) => {
-  try {
-    const seedData = getSeedData();
-    const violations = seedData.violations.map((violation, index) => {
-      // Mock random master asset
-      const mockMasterIndex = index % seedData.assets.length;
-      const mockMasterAsset = seedData.assets[mockMasterIndex];
+// ── Helper: check if MongoDB is connected ────────────────────────────────────
+const isDbConnected = () => mongoose.connection.readyState === 1;
 
-      return {
-        ...violation,
-        _id: `mock_violation_${index}`,
-        masterAssetId: `mock_asset_${mockMasterIndex}`,
-        masterAssetUrl: mockMasterAsset.url,
-        detectedAt: new Date().toISOString()
-      };
-    });
-    
-    res.status(200).json(violations);
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/violations
+// Returns all detected violations with coordinates for the World Map.
+// Falls back to seed data when MongoDB is unavailable.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getAllViolations = async (_req, res) => {
+  try {
+    let violations;
+
+    if (isDbConnected()) {
+      const dbViolations = await Violation.find().sort({ detectedAt: -1 }).lean();
+      if (dbViolations.length > 0) {
+        violations = dbViolations;
+      }
+    }
+
+    // Fallback to seed data
+    if (!violations || violations.length === 0) {
+      const seedData = getSeedData();
+      violations = seedData.violations.map((violation, index) => {
+        const masterIndex = index % seedData.assets.length;
+        const masterAsset = seedData.assets[masterIndex];
+
+        return {
+          ...violation,
+          _id: `seed_violation_${index}`,
+          masterAssetId: `seed_asset_${masterIndex}`,
+          masterAssetUrl: masterAsset.url,
+          // Ensure lat/lng and similarityScore are present for the World Map & Gauges
+          lat: violation.coordinates?.[1] ?? 0,
+          lng: violation.coordinates?.[0] ?? 0,
+          similarityScore: violation.confidence,
+          detectedAt: new Date(Date.now() - index * 3600000 * 6).toISOString(),
+        };
+      });
+    }
+
+    return res.status(200).json(violations);
   } catch (error) {
-    console.error("Error reading seed data for violations:", error);
-    res.status(500).json({ message: "Server error fetching violations" });
+    console.error("Error in getAllViolations:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch violations." });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/violations/:id
+// Returns a detailed comparison object between a pirated clip and its master.
+// Used by the Evidence Board for side-by-side analysis.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getViolationById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Try MongoDB first
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      const violation = await Violation.findById(id).lean();
+      if (violation) {
+        // Enrich with master asset data
+        const masterAsset = await Asset.findById(violation.masterAssetId).lean().catch(() => null);
+        return res.status(200).json({
+          ...violation,
+          masterAssetUrl: masterAsset?.url ?? violation.masterAssetUrl,
+          masterMetadata: masterAsset?.metadata ?? {},
+          masterPHash: masterAsset?.pHash ?? "unknown",
+          comparison: {
+            pHashDistance: violation.pHashDistance,
+            confidence: violation.confidence,
+            aiContext: violation.aiContext,
+            platform: violation.platform,
+            coordinates: violation.coordinates,
+            country: violation.country,
+            city: violation.city,
+          },
+        });
+      }
+    }
+
+    // Seed data fallback
+    const seedData = getSeedData();
+    const seedIndex = parseInt(id.replace('seed_violation_', ''), 10);
+    const idx = isNaN(seedIndex) ? 0 : seedIndex;
+    const violation = seedData.violations[idx];
+
+    if (!violation) {
+      return res.status(404).json({ success: false, message: "Violation not found." });
+    }
+
+    const masterIndex = idx % seedData.assets.length;
+    const masterAsset = seedData.assets[masterIndex];
+
+    return res.status(200).json({
+      ...violation,
+      _id: id,
+      masterAssetId: `seed_asset_${masterIndex}`,
+      masterAssetUrl: masterAsset.url,
+      masterMetadata: masterAsset.metadata,
+      masterPHash: masterAsset.pHash,
+      lat: violation.coordinates?.[1] ?? 0,
+      lng: violation.coordinates?.[0] ?? 0,
+      similarityScore: violation.confidence,
+      detectedAt: new Date().toISOString(),
+      comparison: {
+        pHashDistance: violation.pHashDistance,
+        confidence: violation.confidence,
+        aiContext: violation.aiContext,
+        platform: violation.platform,
+        coordinates: violation.coordinates,
+        country: violation.country,
+        city: violation.city,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getViolationById:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch violation details." });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/violations/detect
+// Starts a detection scan against a suspect URL.
+// ─────────────────────────────────────────────────────────────────────────────
+export const detectViolation = async (req, res) => {
+  try {
+    const { suspectUrl, platform } = req.body;
+
+    if (!suspectUrl) {
+      return res.status(400).json({ success: false, message: "suspectUrl is required." });
+    }
+
+    // For prototype: respond immediately with mock detection
+    return res.status(200).json({
+      success: true,
+      message: "Detection scan started.",
+      mocked: true,
+      status: "Processing",
+    });
+  } catch (error) {
+    console.error("Detection error:", error);
+    return res.status(500).json({ success: false, message: "Server error during detection." });
   }
 };

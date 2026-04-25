@@ -14,18 +14,21 @@ export const useAssets = () => {
       // Transform backend data to match frontend UI expectations
       const transformedAssets = response.data.map(asset => ({
         id: asset._id,
-        title: asset.url.split('/').pop() || 'Uploaded Media', // Extract a dummy title
+        title: asset.metadata?.league
+          ? `${asset.metadata.league} — ${asset.url.split('/').pop()}`
+          : asset.url.split('/').pop() || 'Uploaded Media',
         thumbnail: asset.url,
         type: asset.metadata?.format?.includes('video') ? 'video' : 'image',
         status: asset.status === 'Processing' ? 'Scanning' : (asset.status === 'Verified' ? 'Secure' : 'Violated'),
-        violations: 0, // In a real app, you would query violations per asset
-        pulseId: `PV-${asset._id.substring(0, 8).toUpperCase()}`,
+        violations: 0,
+        pulseId: `PV-${asset._id.toString().substring(0, 8).toUpperCase()}`,
         uploadedAt: new Date(asset.createdAt).toLocaleDateString(),
       }));
 
       setAssets(transformedAssets);
       setError(null);
     } catch (err) {
+      console.error("useAssets fetch error:", err);
       setError(err.response?.data?.message || 'Failed to fetch assets');
     } finally {
       setLoading(false);

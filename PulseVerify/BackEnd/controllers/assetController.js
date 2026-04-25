@@ -1,121 +1,168 @@
-import Asset from '../models/Asset.js';
-import { generatePHash } from '../services/hashService.js';
-
-export const handleNewUpload = async (req, res) => {
-  try {
-    const { imageUrl } = req.body;
-    const uploaderId = req.user.uid; // From auth middleware
-
-    if (!imageUrl) {
-      return res.status(400).json({ message: "imageUrl is required" });
-    }
-
-    // 1. Create a placeholder asset immediately so user isn't blocked
-    const newAsset = await Asset.create({
-      url: imageUrl,
-      uploaderId,
-      pHash: "processing...", // temporary
-      aiAnalysis: {
-        isOfficial: false,
-        confidence: 0,
-        reasoning: "Processing..."
-      },
-      status: 'Processing'
-    });
-
-    // 2. Respond immediately
-    res.status(202).json({
-      message: "Asset upload received and processing started.",
-      asset: newAsset
-    });
-
-    // 3. Process AI and pHash asynchronously
-    processAssetBackground(newAsset._id, imageUrl).catch(console.error);
-
-  } catch (error) {
-    console.error("Upload error:", error);
-    res.status(500).json({ message: "Server error during upload" });
-  }
-};
-
-const processAssetBackground = async (assetId, imageUrl) => {
-  try {
-    console.log(`Starting background processing for asset ${assetId}`);
-    
-    // Mock AI verification for simple prototype
-    const aiReport = {
-      isOfficial: true,
-      confidence: 95,
-      reasoning: "Mocked AI Report: Matched official jerseys despite crop."
-    };
-
-    // Run Hashing asynchronously
-    const hash = await generatePHash(imageUrl).catch(err => {
-      console.error("Hashing failed:", err);
-      return "hash_failed";
-    });
-
-    // Update MongoDB
-    await Asset.findByIdAndUpdate(assetId, {
-      pHash: hash,
-      aiAnalysis: {
-        isOfficial: aiReport.isOfficial,
-        confidence: aiReport.confidence,
-        reasoning: aiReport.reasoning
-      },
-      status: aiReport.isOfficial ? 'Verified' : 'Flagged'
-    });
-
-    console.log(`Completed background processing for asset ${assetId}`);
-  } catch (err) {
-    console.error(`Background processing failed for asset ${assetId}:`, err);
-    await Asset.findByIdAndUpdate(assetId, { status: 'Flagged' });
-  }
-};
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import Asset from '../models/Asset.js';
+import { generatePHash } from '../services/hashService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const seedDataPath = path.join(__dirname, '../data/seedData.json');
 
+// ── Helper: read seed data safely ───────────────────────────────────────────
 const getSeedData = () => {
   const data = fs.readFileSync(seedDataPath, 'utf-8');
   return JSON.parse(data);
 };
 
-export const getAllAssets = async (req, res) => {
+// ── Helper: check if MongoDB is connected ────────────────────────────────────
+import mongoose from 'mongoose';
+const isDbConnected = () => mongoose.connection.readyState === 1;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/assets
+// Returns the full list of registered master assets.
+// Falls back to seed data when MongoDB is unavailable.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getAllAssets = async (_req, res) => {
   try {
-    const seedData = getSeedData();
-    // Inject mock _id and createdAt
-    const assets = seedData.assets.map((asset, index) => ({
-      ...asset,
-      _id: `mock_asset_${index}`,
-      createdAt: new Date().toISOString()
-    }));
-    res.status(200).json(assets);
+    let assets;
+
+    if (isDbConnected()) {
+      const dbAssets = await Asset.find().sort({ createdAt: -1 }).lean();
+      if (dbAssets.length > 0) {
+        assets = dbAssets;
+      }
+    }
+
+    // Fallback to seed data
+    if (!assets || assets.length === 0) {
+      const seedData = getSeedData();
+      assets = seedData.assets.map((asset, index) => ({
+        ...asset,
+        _id: `seed_asset_${index}`,
+        createdAt: new Date(Date.now() - index * 86400000).toISOString(),
+      }));
+    }
+
+    return res.status(200).json(assets);
   } catch (error) {
-    console.error("Error reading seed data:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in getAllAssets:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch assets." });
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/assets/:id
+// Returns a single asset by ID (supports both MongoDB ObjectIds and seed IDs).
+// ─────────────────────────────────────────────────────────────────────────────
 export const getAssetById = async (req, res) => {
   try {
+    const { id } = req.params;
+
+    // Try MongoDB first
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      const asset = await Asset.findById(id).lean();
+      if (asset) return res.status(200).json(asset);
+    }
+
+    // Seed data fallback
     const seedData = getSeedData();
-    const mockIndex = parseInt(req.params.id.replace('mock_asset_', '')) || 0;
-    const asset = seedData.assets[mockIndex];
-    if (!asset) return res.status(404).json({ message: "Asset not found" });
-    
-    res.status(200).json({
+    const seedIndex = parseInt(id.replace('seed_asset_', ''), 10);
+    const asset = seedData.assets[isNaN(seedIndex) ? 0 : seedIndex];
+
+    if (!asset) {
+      return res.status(404).json({ success: false, message: "Asset not found." });
+    }
+
+    return res.status(200).json({
       ...asset,
-      _id: req.params.id,
-      createdAt: new Date().toISOString()
+      _id: id,
+      createdAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Error reading seed data:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in getAssetById:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch asset." });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/assets/upload
+// Creates a new asset record. Falls back to an in-memory mock when DB is down.
+// ─────────────────────────────────────────────────────────────────────────────
+export const handleNewUpload = async (req, res) => {
+  try {
+    const { imageUrl } = req.body;
+    const uploaderId = req.user?.uid || 'anonymous';
+
+    if (!imageUrl) {
+      return res.status(400).json({ success: false, message: "imageUrl is required." });
+    }
+
+    if (isDbConnected()) {
+      const newAsset = await Asset.create({
+        url: imageUrl,
+        uploaderId,
+        pHash: "processing...",
+        aiAnalysis: { isOfficial: false, confidence: 0, reasoning: "Processing..." },
+        status: 'Processing',
+      });
+
+      res.status(202).json({
+        success: true,
+        message: "Asset upload received and processing started.",
+        asset: newAsset,
+      });
+
+      // Fire-and-forget background processing
+      processAssetBackground(newAsset._id, imageUrl).catch(console.error);
+    } else {
+      // Mock response when DB is offline
+      const mockAsset = {
+        _id: `mock_${Date.now()}`,
+        url: imageUrl,
+        uploaderId,
+        pHash: "mock_hash",
+        aiAnalysis: { isOfficial: true, confidence: 95, reasoning: "Mock analysis — DB offline." },
+        status: 'Verified',
+        createdAt: new Date().toISOString(),
+      };
+      return res.status(202).json({
+        success: true,
+        message: "Asset received (seed-data mode).",
+        asset: mockAsset,
+      });
+    }
+  } catch (error) {
+    console.error("Upload error:", error);
+    return res.status(500).json({ success: false, message: "Server error during upload." });
+  }
+};
+
+// ── Background processor ─────────────────────────────────────────────────────
+const processAssetBackground = async (assetId, imageUrl) => {
+  try {
+    console.log(`Starting background processing for asset ${assetId}`);
+
+    const aiReport = {
+      isOfficial: true,
+      confidence: 95,
+      reasoning: "Mocked AI Report: Matched official jerseys despite crop.",
+    };
+
+    const hash = await generatePHash(imageUrl).catch((err) => {
+      console.error("Hashing failed:", err);
+      return "hash_failed";
+    });
+
+    await Asset.findByIdAndUpdate(assetId, {
+      pHash: hash,
+      aiAnalysis: aiReport,
+      status: aiReport.isOfficial ? 'Verified' : 'Flagged',
+    });
+
+    console.log(`Completed background processing for asset ${assetId}`);
+  } catch (err) {
+    console.error(`Background processing failed for asset ${assetId}:`, err);
+    await Asset.findByIdAndUpdate(assetId, { status: 'Flagged' }).catch(() => {});
   }
 };

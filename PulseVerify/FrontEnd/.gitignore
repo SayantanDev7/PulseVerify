@@ -14,7 +14,7 @@ node_modules
 dist
 dist-ssr
 
-# Env files (IMPORTANT)
+# # Env files (IMPORTANT)
 .env
 .env.*
 

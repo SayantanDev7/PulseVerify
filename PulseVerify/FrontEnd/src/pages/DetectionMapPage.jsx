@@ -106,7 +106,7 @@ export default function DetectionMapPage() {
       });
     }
     return map;
-  }, []);
+  }, [detections]);
 
   /* get heatmap fill for a country */
   const getCountryFill = (geo) => {
