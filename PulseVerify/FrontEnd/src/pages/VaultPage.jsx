@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Topbar from "../components/layout/Topbar";
 import UploadPortal from "../components/vault/UploadPortal";
 import { useAssets } from "../hooks/useAssets";
+import { useAuth } from "../context/AuthContext";
 
 const statusConfig = {
   Secure: {
@@ -25,6 +27,8 @@ const statusFilters = ["All", "Secure", "Scanning", "Violated"];
 export default function VaultPage() {
   const [showUpload, setShowUpload] = useState(false);
   const { assets, loading, error, refetch } = useAssets();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -42,6 +46,44 @@ export default function VaultPage() {
     scanning: assets.filter((a) => a.status === "Scanning").length,
     violated: assets.filter((a) => a.status === "Violated").length,
   };
+
+  // ── Auth gate: show loading while Firebase resolves ────────────────────────
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white font-[Lexend,sans-serif] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
+          <p className="text-[14px] text-zinc-400">Loading PulseVerify…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Not logged in ─────────────────────────────────────────────────────────
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white font-[Lexend,sans-serif]">
+        <Topbar />
+        <div className="flex flex-col items-center justify-center py-32 text-center px-6">
+          <div className="w-16 h-16 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-6">
+            <svg width="28" height="28" viewBox="0 0 16 16" fill="#ef4444">
+              <path d="M8 1L2 3.8v3.7C2 11 4.8 13.6 8 14.2c3.2-.6 6-3.2 6-6.7V3.8L8 1z" />
+            </svg>
+          </div>
+          <h2 className="text-[22px] font-bold text-white mb-2">Sign in to access your Vault</h2>
+          <p className="text-[14px] text-zinc-500 max-w-md mb-8">
+            Your asset library, violation tracking, and detection tools are behind a secure login.
+          </p>
+          <button
+            onClick={() => navigate("/login")}
+            className="px-6 py-3 bg-red-500 hover:bg-red-400 text-white text-[14px] font-semibold rounded-xl shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+          >
+            Sign in to continue
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-[Lexend,sans-serif]">
@@ -145,77 +187,88 @@ export default function VaultPage() {
           </div>
         </div>
 
+        {/* Loading state */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-8 h-8 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin mb-4" />
+            <p className="text-[14px] text-zinc-400">Loading your assets…</p>
+          </div>
+        )}
+
         {/* Asset grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence mode="popLayout">
-            {filtered.map((a, i) => {
-              const cfg = statusConfig[a.status];
-              return (
-                <motion.div
-                  key={a.id}
-                  layout
-                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ type: "spring", stiffness: 250, damping: 25, delay: i * 0.05 }}
-                  whileHover={{ y: -4 }}
-                  className="group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 hover:shadow-lg hover:shadow-zinc-900/50 transition-colors duration-300"
-                >
-                {/* Thumbnail */}
-                <div className="relative h-44 bg-zinc-800 overflow-hidden">
-                  <img
-                    src={a.thumbnail}
-                    alt={a.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+        {!loading && (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <AnimatePresence mode="popLayout">
+              {filtered.map((a, i) => {
+                const cfg = statusConfig[a.status];
+                return (
+                  <motion.div
+                    key={a.id}
+                    layout
+                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ type: "spring", stiffness: 250, damping: 25, delay: i * 0.05 }}
+                    whileHover={{ y: -4 }}
+                    className="group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 hover:shadow-lg hover:shadow-zinc-900/50 transition-colors duration-300"
+                  >
+                  {/* Thumbnail */}
+                  <div className="relative h-44 bg-zinc-800 overflow-hidden">
+                    <img
+                      src={a.thumbnail}
+                      alt={a.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
 
-                  {/* Type badge */}
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2.5 py-1 bg-black/60 backdrop-blur-sm text-[10px] font-semibold text-white rounded-lg uppercase">
-                      {a.type}
-                    </span>
-                  </div>
-
-                  {/* Status badge */}
-                  <div className="absolute top-3 right-3">
-                    <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold backdrop-blur-sm ${cfg.badge}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                      {a.status}
-                    </span>
-                  </div>
-
-                  {/* Violation overlay */}
-                  {a.violations > 0 && (
-                    <div className="absolute bottom-3 right-3">
-                      <span className="px-2 py-1 bg-red-500/20 backdrop-blur-sm border border-red-500/30 text-red-400 text-[10px] font-bold rounded-lg">
-                        {a.violations} violations
+                    {/* Type badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2.5 py-1 bg-black/60 backdrop-blur-sm text-[10px] font-semibold text-white rounded-lg uppercase">
+                        {a.type}
                       </span>
                     </div>
-                  )}
-                </div>
 
-                {/* Info */}
-                <div className="p-4">
-                  <h3 className="text-[14px] font-semibold text-white truncate mb-1">
-                    {a.title}
-                  </h3>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-zinc-500 font-mono">
-                      {a.pulseId}
-                    </span>
-                    <span className="text-[11px] text-zinc-600">
-                      {a.uploadedAt}
-                    </span>
+                    {/* Status badge */}
+                    <div className="absolute top-3 right-3">
+                      <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold backdrop-blur-sm ${cfg.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                        {a.status}
+                      </span>
+                    </div>
+
+                    {/* Violation overlay */}
+                    {a.violations > 0 && (
+                      <div className="absolute bottom-3 right-3">
+                        <span className="px-2 py-1 bg-red-500/20 backdrop-blur-sm border border-red-500/30 text-red-400 text-[10px] font-bold rounded-lg">
+                          {a.violations} violations
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </motion.div>
-            );
-          })}
-          </AnimatePresence>
-        </div>
+
+                  {/* Info */}
+                  <div className="p-4">
+                    <h3 className="text-[14px] font-semibold text-white truncate mb-1">
+                      {a.title}
+                    </h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-zinc-500 font-mono">
+                        {a.pulseId}
+                      </span>
+                      <span className="text-[11px] text-zinc-600">
+                        {a.uploadedAt}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Empty state */}
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-14 h-14 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-4">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -224,7 +277,7 @@ export default function VaultPage() {
               </svg>
             </div>
             <p className="text-[14px] font-medium text-zinc-400">No assets found</p>
-            <p className="text-[12px] text-zinc-600 mt-1">Try adjusting your filters</p>
+            <p className="text-[12px] text-zinc-600 mt-1">Try adjusting your filters or upload a new asset</p>
           </div>
         )}
       </main>

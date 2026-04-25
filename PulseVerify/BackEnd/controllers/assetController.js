@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import Asset from '../models/Asset.js';
 import { generatePHash } from '../services/hashService.js';
 
@@ -15,36 +16,39 @@ const getSeedData = () => {
 };
 
 // ── Helper: check if MongoDB is connected ────────────────────────────────────
-import mongoose from 'mongoose';
 const isDbConnected = () => mongoose.connection.readyState === 1;
+
+// ── Helper: format seed assets consistently ──────────────────────────────────
+const formatSeedAssets = () => {
+  const seedData = getSeedData();
+  return seedData.assets.map((asset, index) => ({
+    ...asset,
+    _id: `seed_asset_${index}`,
+    _isSeed: true,
+    createdAt: new Date(Date.now() - index * 86400000).toISOString(),
+  }));
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/assets
-// Returns the full list of registered master assets.
-// Falls back to seed data when MongoDB is unavailable.
+// Returns a **merged** array: real MongoDB assets + demo seed data.
+// The seed data provides a rich prototype UI; real uploads appear alongside.
 // ─────────────────────────────────────────────────────────────────────────────
 export const getAllAssets = async (_req, res) => {
   try {
-    let assets;
+    let dbAssets = [];
 
     if (isDbConnected()) {
-      const dbAssets = await Asset.find().sort({ createdAt: -1 }).lean();
-      if (dbAssets.length > 0) {
-        assets = dbAssets;
-      }
+      dbAssets = await Asset.find().sort({ createdAt: -1 }).lean();
     }
 
-    // Fallback to seed data
-    if (!assets || assets.length === 0) {
-      const seedData = getSeedData();
-      assets = seedData.assets.map((asset, index) => ({
-        ...asset,
-        _id: `seed_asset_${index}`,
-        createdAt: new Date(Date.now() - index * 86400000).toISOString(),
-      }));
-    }
+    // Always include seed data so the demo looks populated
+    const seedAssets = formatSeedAssets();
 
-    return res.status(200).json(assets);
+    // Real user uploads first, then seed data
+    const merged = [...dbAssets, ...seedAssets];
+
+    return res.status(200).json(merged);
   } catch (error) {
     console.error("Error in getAllAssets:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch assets." });
@@ -77,6 +81,7 @@ export const getAssetById = async (req, res) => {
     return res.status(200).json({
       ...asset,
       _id: id,
+      _isSeed: true,
       createdAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -135,6 +140,62 @@ export const handleNewUpload = async (req, res) => {
   } catch (error) {
     console.error("Upload error:", error);
     return res.status(500).json({ success: false, message: "Server error during upload." });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /api/assets/:id
+// Updates an existing asset. Only works for real (non-seed) assets.
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateAsset = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id.startsWith('seed_asset_')) {
+      return res.status(403).json({ success: false, message: "Cannot modify demo assets." });
+    }
+
+    if (!isDbConnected() || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid asset ID." });
+    }
+
+    const updated = await Asset.findByIdAndUpdate(id, req.body, { new: true, lean: true });
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Asset not found." });
+    }
+
+    return res.status(200).json({ success: true, asset: updated });
+  } catch (error) {
+    console.error("Update error:", error);
+    return res.status(500).json({ success: false, message: "Failed to update asset." });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /api/assets/:id
+// Deletes an asset. Only works for real (non-seed) assets.
+// ─────────────────────────────────────────────────────────────────────────────
+export const deleteAsset = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id.startsWith('seed_asset_')) {
+      return res.status(403).json({ success: false, message: "Cannot delete demo assets." });
+    }
+
+    if (!isDbConnected() || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid asset ID." });
+    }
+
+    const deleted = await Asset.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Asset not found." });
+    }
+
+    return res.status(200).json({ success: true, message: "Asset deleted." });
+  } catch (error) {
+    console.error("Delete error:", error);
+    return res.status(500).json({ success: false, message: "Failed to delete asset." });
   }
 };
 

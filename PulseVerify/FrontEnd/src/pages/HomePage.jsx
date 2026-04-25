@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
 
 /* ── Animated counter ──────────────────────────────────────────── */
 function Counter({ target, suffix = "" }) {
@@ -143,6 +144,9 @@ const stats = [
 
 /* ════════════════════════════════════════════════════════════════ */
 export default function HomePage() {
+  const { user, isAuthenticated } = useAuth();
+  const displayName = user?.displayName || user?.email?.split("@")[0] || null;
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-[Lexend,sans-serif] overflow-x-hidden">
       {/* ── Topbar ────────────────────────────────────────────── */}
@@ -161,7 +165,7 @@ export default function HomePage() {
             item === "Dashboard" ? (
               <Link
                 key={item}
-                to="/login"
+                to={isAuthenticated ? "/vault" : "/login"}
                 className="px-3.5 py-1.5 text-[13px] font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-lg transition-all duration-150"
               >
                 {item}
@@ -179,18 +183,34 @@ export default function HomePage() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link
-            to="/login"
-            className="px-4 py-1.5 text-[13px] font-medium text-zinc-300 hover:text-white transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link
-            to="/login"
-            className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white text-[13px] font-semibold rounded-lg shadow-md shadow-red-500/20 active:scale-95 transition-all duration-150"
-          >
-            Get Started
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <span className="text-[13px] text-zinc-400">
+                Hi, <span className="text-white font-medium">{displayName}</span>
+              </span>
+              <Link
+                to="/vault"
+                className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white text-[13px] font-semibold rounded-lg shadow-md shadow-red-500/20 active:scale-95 transition-all duration-150"
+              >
+                Go to Vault
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="px-4 py-1.5 text-[13px] font-medium text-zinc-300 hover:text-white transition-colors"
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/login"
+                className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white text-[13px] font-semibold rounded-lg shadow-md shadow-red-500/20 active:scale-95 transition-all duration-150"
+              >
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
       </header>
 

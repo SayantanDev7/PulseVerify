@@ -15,4 +15,15 @@ export default defineConfig({
       'recharts',
     ],
   },
+  server: {
+    // Proxy all /api requests to the Express backend.
+    // This eliminates CORS issues entirely during development.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })

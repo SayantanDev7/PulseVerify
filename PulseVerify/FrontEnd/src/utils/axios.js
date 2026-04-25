@@ -1,10 +1,11 @@
 import axios from "axios";
 import { toast, Bounce } from "react-toastify";
 
-// Axios instance for all PulseVerify API calls.
-// VITE_API_BASE_URL should point to the Express server (e.g., http://localhost:5000)
+// ── Axios instance for all PulseVerify API calls ────────────────────────────
+// In development, Vite's proxy forwards /api/* → http://localhost:5000/api/*
+// so we leave baseURL empty (same-origin). In production, set VITE_API_BASE_URL.
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "",
   timeout: 15000,
   headers: {
     "Content-Type": "application/json",
@@ -26,25 +27,33 @@ instance.interceptors.request.use(
 );
 
 // ── Response interceptor ────────────────────────────────────────────────────
+// Suppress toast errors for 401 when there's no token (user simply isn't
+// logged in yet). This prevents the "Session expired" spam on first load.
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
+    const hasToken = !!localStorage.getItem("token");
+
+    // If 401 and user never logged in → don't show a toast, it's expected
+    if (status === 401 && !hasToken) {
+      return Promise.reject(error);
+    }
+
     const messages = {
       401: "Session expired — please log in again.",
       403: "Access denied.",
       404: "Resource not found.",
     };
 
-    // Only show toast for non-network errors
     if (status) {
       toast.error(messages[status] ?? "Something went wrong!", {
         transition: Bounce,
         position: "bottom-right",
         theme: "dark",
-        toastId: `api-error-${status}`, // prevent duplicate toasts
+        toastId: `api-error-${status}`,
       });
-    } else if (error.code === 'ECONNABORTED') {
+    } else if (error.code === "ECONNABORTED") {
       toast.error("Request timed out. Is the backend running?", {
         transition: Bounce,
         position: "bottom-right",

@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from '../utils/axios.js';
+import { useAuth } from '../context/AuthContext';
 
 export const useAssets = () => {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const fetchAssets = useCallback(async () => {
+    // Don't fire API calls until auth is resolved and user is logged in
+    if (authLoading || !isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await axios.get('/api/assets');
@@ -33,7 +41,7 @@ export const useAssets = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, authLoading]);
 
   useEffect(() => {
     fetchAssets();

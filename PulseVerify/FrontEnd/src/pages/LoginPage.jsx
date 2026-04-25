@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "../utils/axios";
 import { auth, provider } from "../firebase";
+import { useAuth } from "../context/AuthContext";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -20,6 +21,14 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   
   const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate("/vault", { replace: true });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
   // User-friendly error mapping based on Firebase Auth error codes
   const getErrorMessage = (error) => {
@@ -43,9 +52,10 @@ export default function LoginPage() {
   };
 
   const handleAuthSuccess = async (user, token) => {
+    // AuthContext's onAuthStateChanged will pick up the token automatically.
+    // But we still store it in localStorage for the axios interceptor.
     localStorage.setItem("token", token);
     try {
-      // Optional: Call your backend to sync user data
       await axios.post(
         "/api/auth/verify",
         { email: user.email },
@@ -55,7 +65,7 @@ export default function LoginPage() {
       console.warn("Backend sync failed or not required:", err);
     }
     toast.success(`${isLogin ? "Welcome back" : "Account created"}! Redirecting...`);
-    setTimeout(() => navigate("/vault"), 1500);
+    setTimeout(() => navigate("/vault"), 800);
   };
 
   const handleSubmit = async (e) => {
