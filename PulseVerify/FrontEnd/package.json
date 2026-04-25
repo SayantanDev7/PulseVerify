@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "axios": "^1.15.0",
+    "firebase": "^12.12.1",
     "framer-motion": "^12.38.0",
     "nanoid": "^5.1.7",
     "prop-types": "^15.8.1",

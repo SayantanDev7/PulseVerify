@@ -1,37 +1,116 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import axios from "../utils/axios";
+import { auth, provider } from "../firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 
 export default function LoginPage() {
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  
   const navigate = useNavigate();
+
+  // User-friendly error mapping based on Firebase Auth error codes
+  const getErrorMessage = (error) => {
+    switch (error.code) {
+      case "auth/invalid-email":
+        return "The email address is invalid.";
+      case "auth/user-not-found":
+        return "No account found with this email.";
+      case "auth/wrong-password":
+      case "auth/invalid-credential":
+        return "Incorrect email or password.";
+      case "auth/email-already-in-use":
+        return "An account already exists with this email.";
+      case "auth/weak-password":
+        return "Your password is too weak. Please use at least 6 characters.";
+      case "auth/popup-closed-by-user":
+        return "The login popup was closed before finishing.";
+      default:
+        return error.message || "An unexpected error occurred. Please try again.";
+    }
+  };
+
+  const handleAuthSuccess = async (user, token) => {
+    localStorage.setItem("token", token);
+    try {
+      // Optional: Call your backend to sync user data
+      await axios.post(
+        "/api/auth/verify",
+        { email: user.email },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (err) {
+      console.warn("Backend sync failed or not required:", err);
+    }
+    toast.success(`${isLogin ? "Welcome back" : "Account created"}! Redirecting...`);
+    setTimeout(() => navigate("/vault"), 1500);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email || !password) {
+      return toast.error("Please fill in all fields.");
+    }
+
     setLoading(true);
-    
     try {
-      // In a real app, you would sign in with Firebase Client SDK here
-      // const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // const token = await userCredential.user.getIdToken();
+      let userCredential;
+      if (isLogin) {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      }
       
-      // For prototype: we assume the user obtained a token and stored it. 
-      // Assuming utils/axios already intercepts and attaches the token if it exists.
-      // If no real Firebase client is set up, this will fail unless a token is manually put in localStorage.
-      
-      // Calling the backend to verify and register
-      const response = await axios.post("/api/auth/verify", { email });
-      
-      // Redirect to vault regardless of new or returning (handled seamlessly)
-      navigate("/vault");
+      const token = await userCredential.user.getIdToken();
+      await handleAuthSuccess(userCredential.user, token);
     } catch (error) {
-      console.error("Login failed:", error);
-      alert("Authentication failed. Ensure your Firebase token is valid in localStorage.");
+      console.error("Authentication failed:", error);
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const token = await result.user.getIdToken();
+      await handleAuthSuccess(result.user, token);
+    } catch (error) {
+      console.error("Google login failed:", error);
+      toast.error(getErrorMessage(error));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      return toast.error("Please enter your email address first to reset your password.");
+    }
+
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success("Password reset email sent. Please check your inbox.");
+    } catch (error) {
+      console.error("Password reset failed:", error);
+      toast.error(getErrorMessage(error));
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -50,10 +129,10 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-[24px] font-bold tracking-tight">
-            Welcome back
+            {isLogin ? "Welcome back" : "Create an account"}
           </h1>
           <p className="text-[13px] text-zinc-500 mt-1">
-            Sign in to your PulseVerify account
+            {isLogin ? "Sign in to your PulseVerify account" : "Join PulseVerify today"}
           </p>
         </div>
 
@@ -116,27 +195,31 @@ export default function LoginPage() {
                 />
                 <span className="text-[12px] text-zinc-500">Remember me</span>
               </label>
-              <button
-                type="button"
-                className="text-[12px] text-red-400 hover:text-red-300 transition-colors"
-              >
-                Forgot password?
-              </button>
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading}
+                  className="text-[12px] text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                >
+                  {resetLoading ? "Sending..." : "Forgot password?"}
+                </button>
+              )}
             </div>
 
             {/* Submit */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading || resetLoading}
               className="w-full py-3 bg-red-500 hover:bg-red-400 disabled:opacity-50 text-white text-[14px] font-semibold rounded-xl shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all duration-150 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in…
+                  {isLogin ? "Signing in…" : "Creating account…"}
                 </>
               ) : (
-                "Sign in"
+                isLogin ? "Sign in" : "Sign up"
               )}
             </button>
           </form>
@@ -149,38 +232,47 @@ export default function LoginPage() {
           </div>
 
           {/* Google Sign In */}
-          <button className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-white text-[13px] font-medium rounded-xl transition-all duration-150 flex items-center justify-center gap-3 active:scale-[0.98]">
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                fill="#4285F4"
-              />
-              <path
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                fill="#34A853"
-              />
-              <path
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.97 10.97 0 001 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z"
-                fill="#FBBC05"
-              />
-              <path
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                fill="#EA4335"
-              />
-            </svg>
+          <button 
+            onClick={handleGoogleLogin}
+            disabled={googleLoading || loading || resetLoading}
+            className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 border border-zinc-700 hover:border-zinc-600 text-white text-[13px] font-medium rounded-xl transition-all duration-150 flex items-center justify-center gap-3 active:scale-[0.98]"
+          >
+            {googleLoading ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.97 10.97 0 001 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  fill="#EA4335"
+                />
+              </svg>
+            )}
             Continue with Google
           </button>
         </div>
 
         {/* Footer link */}
         <p className="animate-fade-in-up stagger-3 text-center text-[12px] text-zinc-600 mt-6">
-          Don't have an account?{" "}
-          <Link
-            to="/dashboard"
+          {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+          <button
+            type="button"
+            onClick={() => setIsLogin(!isLogin)}
             className="text-red-400 hover:text-red-300 font-medium transition-colors"
           >
-            Get started free
-          </Link>
+            {isLogin ? "Get started free" : "Sign in instead"}
+          </button>
         </p>
 
         {/* Back to home */}
