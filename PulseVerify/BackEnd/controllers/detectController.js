@@ -11,10 +11,14 @@ export const detectViolation = async (req, res) => {
       return res.status(400).json({ message: "suspectUrl is required" });
     }
 
-    res.status(202).json({ message: "Detection scan started." });
-
-    // Run asynchronously
-    runDetectionBackground(suspectUrl, platform).catch(console.error);
+    res.status(200).json({ 
+      message: "Detection scan started.", 
+      mocked: true,
+      status: "Processing"
+    });
+    
+    // Skip real background processing for seed data prototype
+    console.log(`Mock processing detection for ${suspectUrl}`);
     
   } catch (error) {
     console.error("Detection error:", error);
@@ -83,12 +87,39 @@ const runDetectionBackground = async (suspectUrl, platform) => {
   }
 };
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const seedDataPath = path.join(__dirname, '../data/seedData.json');
+
+const getSeedData = () => {
+  const data = fs.readFileSync(seedDataPath, 'utf-8');
+  return JSON.parse(data);
+};
+
 export const getAllViolations = async (req, res) => {
   try {
-    // We populate the masterAsset to get the original URL for comparison
-    const violations = await Violation.find().populate('masterAssetId').sort({ detectedAt: -1 });
+    const seedData = getSeedData();
+    const violations = seedData.violations.map((violation, index) => {
+      // Mock random master asset
+      const mockMasterIndex = index % seedData.assets.length;
+      const mockMasterAsset = seedData.assets[mockMasterIndex];
+
+      return {
+        ...violation,
+        _id: `mock_violation_${index}`,
+        masterAssetId: `mock_asset_${mockMasterIndex}`,
+        masterAssetUrl: mockMasterAsset.url,
+        detectedAt: new Date().toISOString()
+      };
+    });
+    
     res.status(200).json(violations);
   } catch (error) {
+    console.error("Error reading seed data for violations:", error);
     res.status(500).json({ message: "Server error fetching violations" });
   }
 };

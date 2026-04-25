@@ -33,7 +33,16 @@ const violationSchema = new mongoose.Schema({
   }, // e.g., 'Twitter', 'YouTube', 'Unknown'
   aiContext: { 
     type: String 
-  } // Additional reasoning from GenAI
+  }, // Additional reasoning from GenAI
+  coordinates: {
+    type: [Number]
+  },
+  country: {
+    type: String
+  },
+  city: {
+    type: String
+  }
 });
 
 export default mongoose.model("Violation", violationSchema);

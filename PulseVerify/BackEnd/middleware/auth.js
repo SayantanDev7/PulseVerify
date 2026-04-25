@@ -3,9 +3,11 @@ import admin from 'firebase-admin';
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
   admin.initializeApp({
-    // It assumes GOOGLE_APPLICATION_CREDENTIALS environment variable is set
-    // Or it will use the default service account in GCP environment
-    credential: admin.credential.applicationDefault()
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    })
   });
 }
 

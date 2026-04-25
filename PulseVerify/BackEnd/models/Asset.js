@@ -27,7 +27,7 @@ const assetSchema = new mongoose.Schema({
   metadata: {
     format: String,
     size: Number,
-    dimensions: String
+    league: String
   },
   createdAt: { 
     type: Date, 

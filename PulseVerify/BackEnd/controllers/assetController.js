@@ -1,6 +1,5 @@
 import Asset from '../models/Asset.js';
 import { generatePHash } from '../services/hashService.js';
-import { verifySportsMedia } from '../services/aiService.js';
 
 export const handleNewUpload = async (req, res) => {
   try {
@@ -43,14 +42,18 @@ const processAssetBackground = async (assetId, imageUrl) => {
   try {
     console.log(`Starting background processing for asset ${assetId}`);
     
-    // Run AI verification and Hashing in parallel
-    const [aiReport, hash] = await Promise.all([
-      verifySportsMedia(imageUrl),
-      generatePHash(imageUrl).catch(err => {
-        console.error("Hashing failed:", err);
-        return "hash_failed";
-      })
-    ]);
+    // Mock AI verification for simple prototype
+    const aiReport = {
+      isOfficial: true,
+      confidence: 95,
+      reasoning: "Mocked AI Report: Matched official jerseys despite crop."
+    };
+
+    // Run Hashing asynchronously
+    const hash = await generatePHash(imageUrl).catch(err => {
+      console.error("Hashing failed:", err);
+      return "hash_failed";
+    });
 
     // Update MongoDB
     await Asset.findByIdAndUpdate(assetId, {
@@ -70,22 +73,49 @@ const processAssetBackground = async (assetId, imageUrl) => {
   }
 };
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const seedDataPath = path.join(__dirname, '../data/seedData.json');
+
+const getSeedData = () => {
+  const data = fs.readFileSync(seedDataPath, 'utf-8');
+  return JSON.parse(data);
+};
+
 export const getAllAssets = async (req, res) => {
   try {
-    // Only return assets belonging to the user
-    const assets = await Asset.find({ uploaderId: req.user.uid }).sort({ createdAt: -1 });
+    const seedData = getSeedData();
+    // Inject mock _id and createdAt
+    const assets = seedData.assets.map((asset, index) => ({
+      ...asset,
+      _id: `mock_asset_${index}`,
+      createdAt: new Date().toISOString()
+    }));
     res.status(200).json(assets);
   } catch (error) {
+    console.error("Error reading seed data:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
 export const getAssetById = async (req, res) => {
   try {
-    const asset = await Asset.findOne({ _id: req.params.id, uploaderId: req.user.uid });
+    const seedData = getSeedData();
+    const mockIndex = parseInt(req.params.id.replace('mock_asset_', '')) || 0;
+    const asset = seedData.assets[mockIndex];
     if (!asset) return res.status(404).json({ message: "Asset not found" });
-    res.status(200).json(asset);
+    
+    res.status(200).json({
+      ...asset,
+      _id: req.params.id,
+      createdAt: new Date().toISOString()
+    });
   } catch (error) {
+    console.error("Error reading seed data:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
