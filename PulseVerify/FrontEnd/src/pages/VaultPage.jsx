@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Topbar from "../components/layout/Topbar";
 import UploadPortal from "../components/vault/UploadPortal";
+import ApiErrorState from "../components/ui/ApiErrorState";
 import { useAssets } from "../hooks/useAssets";
 import { useAuth } from "../context/AuthContext";
 
@@ -195,12 +196,72 @@ export default function VaultPage() {
           </div>
         )}
 
+        {/* Error state — replaces generic toast with inline recovery UI */}
+        {!loading && error && (
+          <ApiErrorState
+            error={error}
+            onRetry={refetch}
+            title="Couldn't load your assets"
+          />
+        )}
+
+        {/* ── ZERO STATE: First-Run Experience ────────────────────────────── */}
+        {/* When the user has no assets (excluding seed data), guide them */}
+        {!loading && !error && assets.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20 flex items-center justify-center mb-6">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <path d="M12 16V8M8 12l4-4 4 4" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M20 16.5A4 4 0 0016 8h-.5A7 7 0 104 15.5" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h2 className="text-[22px] font-bold text-white mb-2">
+              Your Vault is empty
+            </h2>
+            <p className="text-[14px] text-zinc-500 max-w-md mb-3 leading-relaxed">
+              Upload your first official media asset — a match highlight, press photo, or brand clip.
+              PulseVerify will automatically fingerprint it with pHash and analyze it with AI.
+            </p>
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                onClick={() => setShowUpload(true)}
+                className="group flex items-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-400 text-white text-[14px] font-semibold rounded-xl shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+              >
+                <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                Upload your first asset
+              </button>
+            </div>
+
+            {/* How it works mini-guide */}
+            <div className="mt-10 grid grid-cols-3 gap-4 max-w-xl w-full">
+              {[
+                { step: "1", title: "Upload", desc: "Drag & drop your official media" },
+                { step: "2", title: "Auto-Analyze", desc: "pHash + AI run automatically" },
+                { step: "3", title: "Monitor", desc: "We scan the web 24/7 for copies" },
+              ].map((s) => (
+                <div key={s.step} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-center">
+                  <div className="text-[20px] font-bold text-red-500/40 mb-2">{s.step}</div>
+                  <div className="text-[13px] font-semibold text-white mb-0.5">{s.title}</div>
+                  <div className="text-[11px] text-zinc-500">{s.desc}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Asset grid */}
-        {!loading && (
+        {!loading && !error && assets.length > 0 && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence mode="popLayout">
               {filtered.map((a, i) => {
-                const cfg = statusConfig[a.status];
+                const cfg = statusConfig[a.status] || statusConfig.Secure;
                 return (
                   <motion.div
                     key={a.id}
@@ -267,8 +328,8 @@ export default function VaultPage() {
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && filtered.length === 0 && (
+        {/* Filtered empty state (assets exist but filters don't match) */}
+        {!loading && !error && assets.length > 0 && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-14 h-14 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-4">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">

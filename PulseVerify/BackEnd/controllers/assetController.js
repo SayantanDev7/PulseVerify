@@ -4,10 +4,15 @@ import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import Asset from '../models/Asset.js';
 import { generatePHash } from '../services/hashService.js';
+import { analyzeWithVision } from '../services/visionService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const seedDataPath = path.join(__dirname, '../data/seedData.json');
+
+// ── In-memory processing status tracker ─────────────────────────────────────
+// Allows the frontend to poll for background processing status (pHash + Vision)
+const processingStatus = new Map();
 
 // ── Helper: read seed data safely ───────────────────────────────────────────
 const getSeedData = () => {
@@ -92,7 +97,9 @@ export const getAssetById = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/assets/upload
-// Creates a new asset record. Falls back to an in-memory mock when DB is down.
+// Creates a new asset record. Automatically triggers pHash generation
+// and Vision API analysis in the background. The user does NOT need to
+// manually click "Analyze."
 // ─────────────────────────────────────────────────────────────────────────────
 export const handleNewUpload = async (req, res) => {
   try {
@@ -112,13 +119,23 @@ export const handleNewUpload = async (req, res) => {
         status: 'Processing',
       });
 
-      res.status(202).json({
-        success: true,
-        message: "Asset upload received and processing started.",
-        asset: newAsset,
+      // Initialize processing status tracker
+      const trackingId = newAsset._id.toString();
+      processingStatus.set(trackingId, {
+        phase: 'uploading',
+        progress: 100, // Upload is done at this point
+        message: 'Upload complete. Starting analysis…',
+        startedAt: Date.now(),
       });
 
-      // Fire-and-forget background processing
+      res.status(202).json({
+        success: true,
+        message: "Asset upload received. pHash generation and AI analysis started automatically.",
+        asset: newAsset,
+        trackingId,
+      });
+
+      // Fire-and-forget background processing — pHash + Vision API
       processAssetBackground(newAsset._id, imageUrl).catch(console.error);
     } else {
       // Mock response when DB is offline
@@ -140,6 +157,43 @@ export const handleNewUpload = async (req, res) => {
   } catch (error) {
     console.error("Upload error:", error);
     return res.status(500).json({ success: false, message: "Server error during upload." });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/assets/:id/status
+// Returns the real-time processing status of an asset being analyzed.
+// The frontend can poll this to show progress.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getAssetStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const status = processingStatus.get(id);
+
+    if (status) {
+      return res.status(200).json({ success: true, ...status });
+    }
+
+    // If not in memory, try DB
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      const asset = await Asset.findById(id).select('status pHash aiAnalysis').lean();
+      if (asset) {
+        return res.status(200).json({
+          success: true,
+          phase: asset.status === 'Processing' ? 'analyzing' : 'complete',
+          progress: asset.status === 'Processing' ? 50 : 100,
+          message: asset.status === 'Processing'
+            ? 'Analysis in progress…'
+            : `Analysis complete. Status: ${asset.status}`,
+          asset,
+        });
+      }
+    }
+
+    return res.status(404).json({ success: false, message: "Asset not found." });
+  } catch (error) {
+    console.error("Status check error:", error);
+    return res.status(500).json({ success: false, message: "Failed to check status." });
   }
 };
 
@@ -200,30 +254,84 @@ export const deleteAsset = async (req, res) => {
 };
 
 // ── Background processor ─────────────────────────────────────────────────────
+// Automatically runs pHash generation AND Vision API analysis when an asset
+// is uploaded. The user never needs to manually trigger analysis.
 const processAssetBackground = async (assetId, imageUrl) => {
-  try {
-    console.log(`Starting background processing for asset ${assetId}`);
+  const trackingId = assetId.toString();
 
-    const aiReport = {
-      isOfficial: true,
-      confidence: 95,
-      reasoning: "Mocked AI Report: Matched official jerseys despite crop.",
-    };
+  try {
+    console.log(`🔍 Starting automated analysis for asset ${assetId}`);
+
+    // ── Phase 1: Perceptual Hash generation ─────────────────────────────────
+    processingStatus.set(trackingId, {
+      phase: 'hashing',
+      progress: 30,
+      message: 'Generating perceptual fingerprint (pHash)…',
+      startedAt: Date.now(),
+    });
 
     const hash = await generatePHash(imageUrl).catch((err) => {
       console.error("Hashing failed:", err);
       return "hash_failed";
     });
 
-    await Asset.findByIdAndUpdate(assetId, {
-      pHash: hash,
-      aiAnalysis: aiReport,
-      status: aiReport.isOfficial ? 'Verified' : 'Flagged',
+    // ── Phase 2: Vision API / AI Analysis ───────────────────────────────────
+    processingStatus.set(trackingId, {
+      phase: 'analyzing',
+      progress: 60,
+      message: 'Running AI content analysis (Vision API)…',
+      startedAt: Date.now(),
     });
 
-    console.log(`Completed background processing for asset ${assetId}`);
+    const aiReport = await analyzeWithVision(imageUrl);
+
+    // ── Phase 3: Save results ───────────────────────────────────────────────
+    processingStatus.set(trackingId, {
+      phase: 'finalizing',
+      progress: 90,
+      message: 'Saving analysis results…',
+      startedAt: Date.now(),
+    });
+
+    const finalStatus = aiReport.isOfficial ? 'Verified' : 'Flagged';
+
+    await Asset.findByIdAndUpdate(assetId, {
+      pHash: hash,
+      aiAnalysis: {
+        isOfficial: aiReport.isOfficial,
+        confidence: aiReport.confidence,
+        reasoning: aiReport.reasoning,
+      },
+      status: finalStatus,
+    });
+
+    // ── Complete ────────────────────────────────────────────────────────────
+    processingStatus.set(trackingId, {
+      phase: 'complete',
+      progress: 100,
+      message: `Analysis complete. Asset is ${finalStatus}.`,
+      result: {
+        pHash: hash,
+        aiReport,
+        status: finalStatus,
+      },
+      completedAt: Date.now(),
+    });
+
+    console.log(`✅ Completed automated analysis for asset ${assetId}: ${finalStatus}`);
+
+    // Clean up status after 10 minutes
+    setTimeout(() => processingStatus.delete(trackingId), 10 * 60 * 1000);
   } catch (err) {
-    console.error(`Background processing failed for asset ${assetId}:`, err);
+    console.error(`❌ Background processing failed for asset ${assetId}:`, err);
+
+    processingStatus.set(trackingId, {
+      phase: 'error',
+      progress: 0,
+      message: 'Analysis failed. Please try re-uploading.',
+      error: err.message,
+    });
+
     await Asset.findByIdAndUpdate(assetId, { status: 'Flagged' }).catch(() => {});
   }
 };

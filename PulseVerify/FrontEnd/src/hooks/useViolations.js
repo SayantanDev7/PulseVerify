@@ -48,9 +48,17 @@ export const useViolations = () => {
           detectedAt: new Date(v.detectedAt).toLocaleString(),
           pulseId: `PV-${v._id.toString().substring(0, 8).toUpperCase()}`,
           aiConfidence: Math.round(v.confidence * 0.98),
-          modifications: [v.aiContext || "Matches Master Hash"],
+          // Use rich modification list from seed data, or fall back
+          modifications: v.modifications || [v.aiContext || "Matches Master Hash"],
+          // Rich AI context for the evidence board
+          aiContext: v.aiContext || "No AI context available.",
+          matchedLogos: v.matchedLogos || [],
+          detectedVia: v.detectedVia || "Automated scan",
+          estimatedReach: v.estimatedReach || "Unknown",
+          uploaderProfile: v.uploaderProfile || "Unknown",
           sourceUrl: v.suspectUrl,
           status: statusMap[v.status] || 'open',
+          rawStatus: v.status,
           
           // Map properties — use real data from seed/DB
           region: v.country || "Unknown",

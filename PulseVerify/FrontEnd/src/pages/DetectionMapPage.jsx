@@ -295,21 +295,28 @@ export default function DetectionMapPage() {
   </div>
 </div>
 
-                {/* Hover tooltip */}
+                {/* Hover tooltip — shows WHY this location is a hotspot */}
                 {hoveredMarker && (
-                  <div className="absolute top-4 left-4 bg-zinc-800/95 backdrop-blur-sm border border-zinc-700 rounded-xl px-4 py-3 shadow-2xl pointer-events-none z-20 animate-fade-in">
+                  <div className="absolute top-4 left-4 bg-zinc-800/95 backdrop-blur-sm border border-zinc-700 rounded-xl px-4 py-3 shadow-2xl pointer-events-none z-20 animate-fade-in max-w-xs">
                     <p className="text-[13px] font-semibold text-white">{hoveredMarker.title}</p>
                     <p className="text-[11px] text-zinc-400 mt-0.5">
                       {hoveredMarker.city}, {hoveredMarker.country} · {hoveredMarker.platform}
                     </p>
                     <div className="flex items-center gap-3 mt-2">
-                      <span className={`text-[13px] font-bold ${levelColors[hoveredMarker.level].text}`}>
+                      <span className={`text-[13px] font-bold ${levelColors[hoveredMarker.level]?.text || 'text-zinc-300'}`}>
                         {hoveredMarker.similarity}% match
                       </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${levelColors[hoveredMarker.level].badge}`}>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${levelColors[hoveredMarker.level]?.badge || ''}`}>
                         {hoveredMarker.level}
                       </span>
                     </div>
+                    {hoveredMarker.estimatedReach && hoveredMarker.estimatedReach !== 'Unknown' && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[10px] text-zinc-500">Reach:</span>
+                        <span className="text-[11px] text-red-400 font-semibold">{hoveredMarker.estimatedReach}</span>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-zinc-500 mt-1">Click for full intelligence →</p>
                   </div>
                 )}
               </div>
@@ -483,7 +490,7 @@ export default function DetectionMapPage() {
           </div>
         </div>
 
-        {/* ── Selected detection detail panel ──────────────────── */}
+        {/* ── Selected detection detail — Rich Hotspot Intelligence ── */}
         {selected && (
           <div className="animate-fade-in-up mb-8 bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
             <div className="flex items-start justify-between">
@@ -499,19 +506,73 @@ export default function DetectionMapPage() {
                 </svg>
               </button>
             </div>
-            <div className="grid md:grid-cols-4 gap-4 mt-5">
+
+            {/* Key metrics */}
+            <div className="grid md:grid-cols-5 gap-4 mt-5">
               {[
-                { label: "Similarity", value: `${selected.similarity}%`, color: levelColors[selected.level].text },
-                { label: "Severity", value: selected.level, color: levelColors[selected.level].text },
+                { label: "Similarity", value: `${selected.similarity}%`, color: levelColors[selected.level]?.text || 'text-zinc-300' },
+                { label: "Severity", value: selected.level, color: levelColors[selected.level]?.text || 'text-zinc-300' },
                 { label: "Platform", value: selected.platform, color: "text-zinc-300" },
+                { label: "Est. Reach", value: selected.estimatedReach || 'Unknown', color: "text-red-400" },
                 { label: "Region", value: selected.region, color: "text-zinc-300" },
               ].map((item) => (
                 <div key={item.label} className="bg-zinc-800/50 rounded-xl p-4">
                   <div className="text-[11px] text-zinc-500 font-medium mb-1">{item.label}</div>
-                  <div className={`text-[20px] font-bold ${item.color}`}>{item.value}</div>
+                  <div className={`text-[16px] font-bold ${item.color}`}>{item.value}</div>
                 </div>
               ))}
             </div>
+
+            {/* Why is this a hotspot — AI intelligence */}
+            {selected.aiContext && (
+              <div className="mt-4 bg-zinc-800/30 border border-zinc-700/50 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2a7 7 0 017 7v1a7 7 0 01-14 0V9a7 7 0 017-7z" stroke="#ef4444" strokeWidth="1.5" />
+                    <circle cx="12" cy="10" r="2" fill="#ef4444" />
+                  </svg>
+                  <span className="text-[12px] font-semibold text-red-400">Why is this a hotspot?</span>
+                </div>
+                <p className="text-[13px] text-zinc-300 leading-relaxed">{selected.aiContext}</p>
+              </div>
+            )}
+
+            {/* Modifications + Matched Logos */}
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
+              {selected.modifications && selected.modifications.length > 0 && (
+                <div>
+                  <div className="text-[11px] text-zinc-500 font-medium mb-2">Modifications Detected</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selected.modifications.map((mod, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-lg text-[10px] text-zinc-400">{mod}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selected.matchedLogos && selected.matchedLogos.length > 0 && (
+                <div>
+                  <div className="text-[11px] text-zinc-500 font-medium mb-2">Matched Logos</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selected.matchedLogos.map((logo, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-red-500/5 border border-red-500/20 rounded-lg text-[10px] text-red-400">{logo}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Uploader info + Detection method */}
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
+              <div className="bg-zinc-800/50 rounded-xl p-3">
+                <div className="text-[10px] text-zinc-500 font-medium mb-1">Uploader Profile</div>
+                <div className="text-[12px] text-zinc-300">{selected.uploaderProfile || 'Unknown'}</div>
+              </div>
+              <div className="bg-zinc-800/50 rounded-xl p-3">
+                <div className="text-[10px] text-zinc-500 font-medium mb-1">Detection Method</div>
+                <div className="text-[12px] text-zinc-300">{selected.detectedVia || 'Automated scan'}</div>
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 mt-5">
               <button className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white text-[13px] font-semibold rounded-xl shadow-md shadow-red-500/20 active:scale-95 transition-all">
                 Send takedown
