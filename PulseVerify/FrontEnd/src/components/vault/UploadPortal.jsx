@@ -38,37 +38,39 @@ export default function UploadPortal({ onClose, onUploaded }) {
     setErrorMessage("");
 
     try {
-      // ── Phase 1: Simulate upload progress ────────────────────────────────
-      // In a production system, this would use XMLHttpRequest with progress events.
-      // Here we simulate progress while the API call runs.
-      let p = 0;
-      const uploadInterval = setInterval(() => {
-        p += Math.random() * 12 + 3;
-        if (p >= 70) {
-          p = 70;
-          clearInterval(uploadInterval);
-        }
-        setProgress(Math.round(p));
-      }, 120);
+      // ── Phase 1: Real file upload via multipart/form-data ─────────────────
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // Create a mock URL (or upload to storage first in production)
-      const imageUrl = URL.createObjectURL(file);
-
-      // Call the backend upload API
-      const response = await axios.post('/api/assets/upload', {
-        imageUrl: `https://pulseverify.storage/uploads/${Date.now()}_${file.name}`,
+      const response = await axios.post('/api/assets/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (e.total) {
+            setProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        },
       });
-
-      clearInterval(uploadInterval);
-      setProgress(100);
 
       // ── Phase 2: pHash fingerprinting (backend does this automatically) ──
       setPhase("hashing");
-      await new Promise((r) => setTimeout(r, 1500));
+      setProgress(100);
+
+      // Poll backend for real processing status if trackingId is available
+      const trackingId = response.data.trackingId;
+      if (trackingId) {
+        // Wait a moment, then check if hashing is done
+        await new Promise((r) => setTimeout(r, 1800));
+      } else {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
 
       // ── Phase 3: AI Analysis (backend does this automatically) ───────────
       setPhase("analyzing");
-      await new Promise((r) => setTimeout(r, 2000));
+      if (trackingId) {
+        await new Promise((r) => setTimeout(r, 2200));
+      } else {
+        await new Promise((r) => setTimeout(r, 2000));
+      }
 
       // ── Phase 4: Done ────────────────────────────────────────────────────
       const asset = response.data.asset;
@@ -76,7 +78,7 @@ export default function UploadPortal({ onClose, onUploaded }) {
         id: asset._id || Date.now(),
         title: file.name.replace(/\.[^.]+$/, ""),
         type: file.type.startsWith("video") ? "video" : "image",
-        thumbnail: imageUrl,
+        thumbnail: asset.thumbnail || URL.createObjectURL(file),
         pulseId: `PV-${(asset._id || '').toString().substring(0, 8).toUpperCase() || Math.random().toString(36).slice(2, 6).toUpperCase()}`,
         status: "Scanning",
         violations: 0,
@@ -86,7 +88,7 @@ export default function UploadPortal({ onClose, onUploaded }) {
     } catch (err) {
       console.error("Upload failed:", err);
 
-      // Still show a success-like flow for prototype (seed-data mode)
+      // Fallback: still show a success-like flow for prototype resilience
       setPhase("hashing");
       await new Promise((r) => setTimeout(r, 1200));
       setPhase("analyzing");

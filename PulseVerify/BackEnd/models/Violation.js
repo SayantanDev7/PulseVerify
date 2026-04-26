@@ -36,7 +36,7 @@ const violationSchema = new mongoose.Schema({
   }, // e.g., 'Twitter', 'YouTube', 'Unknown'
   aiContext: { 
     type: String 
-  }, // Additional reasoning from GenAI
+  }, // Additional reasoning from AI
   coordinates: {
     type: [Number]
   },
@@ -45,6 +45,27 @@ const violationSchema = new mongoose.Schema({
   },
   city: {
     type: String
+  },
+  // ── Rich evidence fields ────────────────────────────────────────────────────
+  modifications: {
+    type: [String],
+    default: []
+  }, // e.g. ["Bitrate reduction", "Audio re-encoding"]
+  matchedLogos: {
+    type: [String],
+    default: []
+  }, // e.g. ["Premier League watermark visible", "Sky Sports bug"]
+  detectedVia: {
+    type: String,
+    default: 'Automated pHash scan'
+  },
+  estimatedReach: {
+    type: String,
+    default: 'Unknown'
+  },
+  uploaderProfile: {
+    type: String,
+    default: 'Unknown'
   }
 });
 

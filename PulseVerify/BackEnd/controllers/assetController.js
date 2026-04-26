@@ -100,33 +100,51 @@ export const getAssetById = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/assets/upload
-// Creates a new asset record. Automatically triggers pHash generation
-// and Vision API analysis in the background. The user does NOT need to
-// manually click "Analyze."
+// Accepts a real file upload via Multer (multipart/form-data).
+// Automatically triggers pHash generation and Vision API analysis in the
+// background. The user does NOT need to manually click "Analyze."
+//
+// The "Add Asset" flow:
+//   Upload → pHash Fingerprint → Vision API Analysis → MongoDB Save → Done
 // ─────────────────────────────────────────────────────────────────────────────
 export const handleNewUpload = async (req, res) => {
   try {
-    const { imageUrl } = req.body;
     const uploaderId = req.user?.uid || 'anonymous';
 
-    if (!imageUrl) {
-      return res.status(400).json({ success: false, message: "imageUrl is required." });
+    // req.file is populated by Multer middleware (from middleware/upload.js)
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file uploaded. Send a file with field name 'file'." });
     }
+
+    // Build paths — the file is already saved to BackEnd/uploads/ by Multer
+    const relativePath = `/uploads/${req.file.filename}`;          // for DB storage
+    const absolutePath = path.resolve(req.file.path);              // for Jimp / pHash
+    const baseUrl = `${req.protocol}://${req.get('host')}`;        // e.g. http://localhost:5000
+    const thumbnailUrl = `${baseUrl}${relativePath}`;              // full public URL
+
+    const format = req.file.mimetype;                              // e.g. image/png
+    const isImage = format.startsWith('image/');
 
     if (isDbConnected()) {
       const newAsset = await Asset.create({
-        url: imageUrl,
+        url: relativePath,
+        thumbnail: thumbnailUrl,
         uploaderId,
         pHash: "processing...",
         aiAnalysis: { isOfficial: false, confidence: 0, reasoning: "Processing..." },
         status: 'Processing',
+        metadata: {
+          format,
+          size: req.file.size,
+          title: req.file.originalname.replace(/\.[^.]+$/, ''),
+        },
       });
 
       // Initialize processing status tracker
       const trackingId = newAsset._id.toString();
       processingStatus.set(trackingId, {
         phase: 'uploading',
-        progress: 100, // Upload is done at this point
+        progress: 100,
         message: 'Upload complete. Starting analysis…',
         startedAt: Date.now(),
       });
@@ -139,12 +157,16 @@ export const handleNewUpload = async (req, res) => {
       });
 
       // Fire-and-forget background processing — pHash + Vision API
-      processAssetBackground(newAsset._id, imageUrl).catch(console.error);
+      // For images, pass the local file path so Jimp can read it directly.
+      // For videos, pass the public URL (Vision API needs a URL; pHash will use a frame).
+      const analysisSource = isImage ? absolutePath : thumbnailUrl;
+      processAssetBackground(newAsset._id, analysisSource).catch(console.error);
     } else {
-      // Mock response when DB is offline
+      // Mock response when DB is offline — still a real file, just not persisted
       const mockAsset = {
         _id: `mock_${Date.now()}`,
-        url: imageUrl,
+        url: relativePath,
+        thumbnail: thumbnailUrl,
         uploaderId,
         pHash: "mock_hash",
         aiAnalysis: { isOfficial: true, confidence: 95, reasoning: "Mock analysis — DB offline." },
