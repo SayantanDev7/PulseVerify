@@ -21,7 +21,11 @@ const assetSchema = new mongoose.Schema({
   aiAnalysis: {
     isOfficial: { type: Boolean, required: true },
     confidence: { type: Number, required: true },
-    reasoning: { type: String }
+    reasoning: { type: String },
+    logos: [{
+      description: String,
+      score: Number
+    }]
   },
   status: { 
     type: String, 

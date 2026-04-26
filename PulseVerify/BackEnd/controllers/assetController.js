@@ -326,6 +326,7 @@ const processAssetBackground = async (assetId, imageUrl) => {
         isOfficial: aiReport.isOfficial,
         confidence: aiReport.confidence,
         reasoning: aiReport.reasoning,
+        logos: aiReport.logos || [],
       },
       status: finalStatus,
     });
