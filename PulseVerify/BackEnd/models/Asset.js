@@ -5,6 +5,10 @@ const assetSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
+  thumbnail: {
+    type: String,
+    default: null
+  }, // Real displayable image/video URL (Unsplash CDN for seeds, /uploads/ for real uploads)
   pHash: { 
     type: String, 
     required: true, 
@@ -27,7 +31,10 @@ const assetSchema = new mongoose.Schema({
   metadata: {
     format: String,
     size: Number,
-    league: String
+    league: String,
+    title: String,
+    duration: String,
+    resolution: String
   },
   createdAt: { 
     type: Date, 

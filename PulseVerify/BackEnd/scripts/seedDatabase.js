@@ -37,7 +37,8 @@ const seedDatabase = async () => {
       return {
         ...violation,
         masterAssetId: masterAsset._id,
-        masterAssetUrl: masterAsset.url,
+        // Use the thumbnail (real Unsplash URL) for the Evidence Board comparison view
+        masterAssetUrl: masterAsset.thumbnail || masterAsset.url,
         detectedAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)) // Random past dates
       };
     });

@@ -2,6 +2,7 @@
   "assets": [
     {
       "url": "https://pulseverify.test/official/premier-league-final-1.mp4",
+      "thumbnail": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=640&h=360&fit=crop&q=80",
       "pHash": "01010101010101010101010101010101",
       "uploaderId": "SEED_ADMIN",
       "aiAnalysis": {
@@ -23,6 +24,7 @@
     },
     {
       "url": "https://pulseverify.test/official/nba-finals-game7.mp4",
+      "thumbnail": "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=640&h=360&fit=crop&q=80",
       "pHash": "10101010101010101010101010101010",
       "uploaderId": "SEED_ADMIN",
       "aiAnalysis": {
@@ -44,6 +46,7 @@
     },
     {
       "url": "https://pulseverify.test/official/f1-monaco-gp-highlights.mp4",
+      "thumbnail": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=640&h=360&fit=crop&q=80",
       "pHash": "11110000111100001111000011110000",
       "uploaderId": "SEED_ADMIN",
       "aiAnalysis": {
@@ -65,6 +68,7 @@
     },
     {
       "url": "https://pulseverify.test/official/wimbledon-final.mp4",
+      "thumbnail": "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=640&h=360&fit=crop&q=80",
       "pHash": "00001111000011110000111100001111",
       "uploaderId": "SEED_ADMIN",
       "aiAnalysis": {
@@ -86,6 +90,7 @@
     },
     {
       "url": "https://pulseverify.test/official/super-bowl-lviii.mp4",
+      "thumbnail": "https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=640&h=360&fit=crop&q=80",
       "pHash": "11001100110011001100110011001100",
       "uploaderId": "SEED_ADMIN",
       "aiAnalysis": {

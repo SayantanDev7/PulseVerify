@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -25,6 +27,13 @@ app.use(cors({
 
 // ── Body parser ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
+
+// ── Static uploads folder ───────────────────────────────────────────────────
+// Serves files from BackEnd/uploads/ at http://localhost:5000/uploads/<filename>
+// Real user uploads will be accessible here after multer saves them.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ── Health check ────────────────────────────────────────────────────────────
 app.get("/", (_req, res) => {

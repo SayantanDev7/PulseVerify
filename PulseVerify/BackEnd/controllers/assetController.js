@@ -30,6 +30,9 @@ const formatSeedAssets = () => {
     ...asset,
     _id: `seed_asset_${index}`,
     _isSeed: true,
+    // thumbnail field from seedData is a real Unsplash URL — always pass it through.
+    // The url field is a descriptive name (pulseverify.test/...) NOT a real image.
+    thumbnail: asset.thumbnail || asset.url,
     createdAt: new Date(Date.now() - index * 86400000).toISOString(),
   }));
 };
