@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   sendPasswordResetEmail,
 } from "firebase/auth";
 
@@ -99,11 +100,18 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const token = await result.user.getIdToken();
       await handleAuthSuccess(result.user, token);
-    } catch (error) {
-      console.error("Google login failed:", error);
-      toast.error(getErrorMessage(error));
-    } finally {
       setGoogleLoading(false);
+    } catch (error) {
+      if (error.code === 'auth/popup-blocked') {
+        console.warn("Popup blocked. Redirecting to secure login...");
+        toast.warn("Popup blocked. Redirecting to secure login...", { autoClose: 3000 });
+        await signInWithRedirect(auth, provider);
+        // Will not reach here because of page redirect
+      } else {
+        console.error("Google login failed:", error);
+        toast.error(getErrorMessage(error));
+        setGoogleLoading(false);
+      }
     }
   };
 
