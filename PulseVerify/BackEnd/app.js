@@ -12,17 +12,14 @@ import comparisonRoutes from "./routes/comparisonRoutes.js";
 
 const app = express();
 
-// ── CORS ────────────────────────────────────────────────────────────────────
-// Allow the React dev servers on 3000/5173/5174 AND any custom CORS_ORIGIN
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
-  : ["http://localhost:5173", "http://localhost:3000", "http://localhost:5174", "https://your-frontend-domain.vercel.app"];
-
 app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  origin: [
+    'http://localhost:5173', 
+    'http://localhost:3000',
+    'https://pulseverify-frontend-git-main-shnehasishdas18-9175s-projects.vercel.app'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
 }));
 
 // ── Body parser ─────────────────────────────────────────────────────────────
