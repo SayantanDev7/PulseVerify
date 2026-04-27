@@ -1,54 +1,87 @@
-const passport = require('passport');
-const BearerStrategy = require('passport-http-bearer').Strategy;
-const { admin } = require('./firebase');
-const User = require('../models/User');
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as BearerStrategy } from "passport-http-bearer";
+import User from "../models/User.js";
+import { admin } from "./firebase.js";
 
-passport.use(new BearerStrategy(async (token, done) => {
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    const { uid, email, name, phone_number, picture } = decodedToken;
+// ── Google OAuth Strategy ───────────────────────────────────────────────────
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "https://pulseverify.onrender.com/auth/google/callback",
+      proxy: true,
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        let user = await User.findOne({ googleId: profile.id });
 
-    let user = await User.findOne({ uid });
-
-    if (!user) {
-      if (email) {
-        user = await User.findOne({ email });
-      }
-      
-      if (user) {
-        user.uid = uid;
-        if (phone_number && !user.phoneNumber) user.phoneNumber = phone_number;
-        if (picture && !user.picture) user.picture = picture;
-        await user.save();
-      } else {
-        let displayName = name;
-        if (!displayName) {
-          if (email) displayName = email.split('@')[0];
-          else if (phone_number) displayName = phone_number;
-          else displayName = 'User';
+        if (!user) {
+          user = await User.findOne({ email: profile.emails[0].value });
+          if (user) {
+            user.googleId = profile.id;
+            user.name = profile.displayName;
+            user.picture = profile.photos[0]?.value;
+            await user.save();
+          } else {
+            user = await User.create({
+              googleId: profile.id,
+              name: profile.displayName,
+              email: profile.emails[0].value,
+              picture: profile.photos[0]?.value,
+            });
+          }
         }
-
-        user = await User.create({
-          name: displayName,
-          email: email || undefined,
-          phoneNumber: phone_number || undefined,
-          uid: uid,
-          picture: picture || undefined
-        });
+        return done(null, user);
+      } catch (error) {
+        return done(error, null);
       }
     }
+  )
+);
 
-    
-    return done(null, {
-      userId: user._id,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      name: user.name,
-      picture: user.picture
-    });
+// ── Bearer Strategy (for Firebase Token backward compatibility) ─────────────
+passport.use(
+  new BearerStrategy(async (token, done) => {
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      const { uid, email, name, picture } = decodedToken;
+
+      let user = await User.findOne({ firebaseUid: uid });
+
+      if (!user) {
+        user = await User.findOne({ email });
+        if (user) {
+          user.firebaseUid = uid;
+          await user.save();
+        } else {
+          user = await User.create({
+            firebaseUid: uid,
+            email,
+            name: name || email.split("@")[0],
+            picture,
+          });
+        }
+      }
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  })
+);
+
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
   } catch (error) {
-    return done(error);
+    done(error, null);
   }
-}));
+});
 
-module.exports = passport;
+export default passport;
