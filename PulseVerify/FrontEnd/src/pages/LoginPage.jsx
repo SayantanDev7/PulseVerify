@@ -95,9 +95,10 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
+      // Popup opened successfully, now set loading state
+      setGoogleLoading(true);
       const token = await result.user.getIdToken();
       await handleAuthSuccess(result.user, token);
       setGoogleLoading(false);

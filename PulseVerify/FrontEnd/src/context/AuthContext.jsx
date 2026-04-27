@@ -32,12 +32,8 @@ export function AuthProvider({ children }) {
           localStorage.setItem("token", idToken);
           setToken(idToken);
           setUser(result.user);
-          
-          // Verify Redirect URI and push to vault if we landed on login page
-          const currentPath = window.location.pathname;
-          if (currentPath === '/' || currentPath === '/login') {
-            window.location.replace('/vault');
-          }
+          // React Router (via LoginPage) will automatically handle the redirect
+          // to /vault once onAuthStateChanged sets loading to false.
         }
       } catch (error) {
         console.error("Firebase redirect result error:", error);
