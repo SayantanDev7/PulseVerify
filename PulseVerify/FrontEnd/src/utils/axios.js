@@ -5,8 +5,9 @@ import { toast, Bounce } from "react-toastify";
 // In development, Vite's proxy forwards /api/* → http://localhost:5000/api/*
 // so we leave baseURL empty (same-origin). In production, set VITE_API_BASE_URL.
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "https://pulseverify.onrender.com/",
-  timeout: 15000,
+  baseURL: import.meta.env.VITE_API_BASE_URL || "https://pulseverify.onrender.com", // Removed trailing slash
+  timeout: 60000, // Increased to 60s for Render free-tier cold starts
+  withCredentials: true, // Crucial for receiving cookies from backend
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",

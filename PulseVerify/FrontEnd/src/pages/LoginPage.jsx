@@ -95,25 +95,9 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      // Popup opened successfully, now set loading state
-      setGoogleLoading(true);
-      const token = await result.user.getIdToken();
-      await handleAuthSuccess(result.user, token);
-      setGoogleLoading(false);
-    } catch (error) {
-      if (error.code === 'auth/popup-blocked') {
-        console.warn("Popup blocked. Redirecting to secure login...");
-        toast.warn("Popup blocked. Redirecting to secure login...", { autoClose: 3000 });
-        await signInWithRedirect(auth, provider);
-        // Will not reach here because of page redirect
-      } else {
-        console.error("Google login failed:", error);
-        toast.error(getErrorMessage(error));
-        setGoogleLoading(false);
-      }
-    }
+    setGoogleLoading(true);
+    // Redirect to Backend Google OAuth
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL || "https://pulseverify.onrender.com"}/auth/google`;
   };
 
   const handleForgotPassword = async () => {

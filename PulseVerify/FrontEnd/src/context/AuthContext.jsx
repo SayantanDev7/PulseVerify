@@ -21,10 +21,26 @@ export function AuthProvider({ children }) {
     let unsubscribe;
     let isMounted = true;
 
-    const checkRedirectAndListen = async () => {
+    const checkSessionAndListen = async () => {
       try {
-        // 1. Process any pending redirect from Google Sign-In first.
-        // This ensures loading stays true until Firebase finishes the redirect loop.
+        // 1. Check Backend Session (For Google OAuth users)
+        const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://pulseverify.onrender.com";
+        const sessionRes = await fetch(`${BACKEND_URL}/auth/me`, { credentials: 'include' });
+        
+        if (sessionRes.ok) {
+          const data = await sessionRes.json();
+          if (data.isAuthenticated && isMounted) {
+            setUser(data.user);
+            setLoading(false);
+            return; // Use backend session
+          }
+        }
+      } catch (err) {
+        console.warn("Backend session check failed:", err);
+      }
+
+      try {
+        // 2. Check Firebase Redirect (Fallback)
         const result = await getRedirectResult(auth);
         
         if (result && result.user && isMounted) {
@@ -32,33 +48,35 @@ export function AuthProvider({ children }) {
           localStorage.setItem("token", idToken);
           setToken(idToken);
           setUser(result.user);
-          // React Router (via LoginPage) will automatically handle the redirect
-          // to /vault once onAuthStateChanged sets loading to false.
         }
       } catch (error) {
         console.error("Firebase redirect result error:", error);
       }
 
-      // 2. Now that the redirect is resolved, listen to steady-state changes.
+      // 3. Listen to Firebase Auth state
       if (isMounted) {
         unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
           if (firebaseUser) {
             const idToken = await firebaseUser.getIdToken();
             localStorage.setItem("token", idToken);
             setToken(idToken);
-            setUser(firebaseUser);
+            // Only overwrite user if we don't already have a backend session user
+            setUser((prev) => prev || firebaseUser);
           } else {
-            localStorage.removeItem("token");
-            setToken(null);
-            setUser(null);
+            // Keep backend session if it exists
+            setUser((prev) => {
+              if (prev && !prev.uid) return prev; // It's a backend user (no firebase uid property directly on the object root usually)
+              localStorage.removeItem("token");
+              setToken(null);
+              return null;
+            });
           }
-          // Only drop the loading curtain after we know the true state
           setLoading(false);
         });
       }
     };
 
-    checkRedirectAndListen();
+    checkSessionAndListen();
 
     return () => {
       isMounted = false;
@@ -83,7 +101,17 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   const logout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.warn("Firebase signout error:", e);
+    }
+    try {
+      const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://pulseverify.onrender.com";
+      await fetch(`${BACKEND_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.warn("Backend logout error:", e);
+    }
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);

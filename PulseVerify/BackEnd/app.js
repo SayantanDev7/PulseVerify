@@ -13,10 +13,12 @@ import comparisonRoutes from "./routes/comparisonRoutes.js";
 const app = express();
 
 // ── CORS ────────────────────────────────────────────────────────────────────
-// Allow the React dev servers on 3000/5173/5174 AND any custom CORS_ORIGIN
+// Allow the React dev servers on 3000/5173/5174 AND production Vercel
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
-  : ["http://localhost:5173", "http://localhost:3000", "http://localhost:5174", "https://your-frontend-domain.vercel.app"];
+  : ["http://localhost:5173", "http://localhost:3000", "http://localhost:5174", "https://pulse-verify.vercel.app"];
+
+app.set("trust proxy", 1); // Required for secure cookies behind Render's proxy
 
 app.use(cors({
   origin: allowedOrigins,
@@ -25,8 +27,28 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }));
 
-// ── Body parser ─────────────────────────────────────────────────────────────
+// ── Session & Body parsers ──────────────────────────────────────────────────
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
+import passport from 'passport';
+import './config/passport.js'; // Ensure passport config is loaded
+
 app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'pulseverify_secret_key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // true on Render
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // none required for cross-domain
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 // ── Static uploads folder ───────────────────────────────────────────────────
 // Serves files from BackEnd/uploads/ at http://localhost:5000/uploads/<filename>
@@ -41,7 +63,7 @@ app.get("/", (_req, res) => {
 });
 
 // ── API Routes ──────────────────────────────────────────────────────────────
-app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes); // Auth routes should be at /auth to match the callback URL
 app.use("/api/assets", assetRoutes);
 app.use("/api/violations", detectionRoutes);
 app.use("/api/comparisons", comparisonRoutes);
