@@ -21,7 +21,7 @@ const isFakeUrl = (url = '') =>
 
 // Resolve the best displayable thumbnail from an asset object
 const resolveThumbnail = (asset) => {
-  const BACKEND = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const BACKEND = import.meta.env.VITE_API_URL || 'https://pulseverify.onrender.com';
 
   // 1. Use explicit thumbnail field if it's real
   if (asset.thumbnail && !isFakeUrl(asset.thumbnail)) return asset.thumbnail;
