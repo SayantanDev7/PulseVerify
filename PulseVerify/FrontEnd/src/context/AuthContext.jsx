@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { auth } from "../firebase";
 
 const AuthContext = createContext(null);
@@ -18,23 +18,56 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Firebase listener — fires immediately with cached state, then on
-    // every sign-in / sign-out / token-refresh.
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const idToken = await firebaseUser.getIdToken();
-        localStorage.setItem("token", idToken);
-        setToken(idToken);
-        setUser(firebaseUser);
-      } else {
-        localStorage.removeItem("token");
-        setToken(null);
-        setUser(null);
-      }
-      setLoading(false);
-    });
+    let unsubscribe;
+    let isMounted = true;
 
-    return unsubscribe;
+    const checkRedirectAndListen = async () => {
+      try {
+        // 1. Process any pending redirect from Google Sign-In first.
+        // This ensures loading stays true until Firebase finishes the redirect loop.
+        const result = await getRedirectResult(auth);
+        
+        if (result && result.user && isMounted) {
+          const idToken = await result.user.getIdToken();
+          localStorage.setItem("token", idToken);
+          setToken(idToken);
+          setUser(result.user);
+          
+          // Verify Redirect URI and push to vault if we landed on login page
+          const currentPath = window.location.pathname;
+          if (currentPath === '/' || currentPath === '/login') {
+            window.location.replace('/vault');
+          }
+        }
+      } catch (error) {
+        console.error("Firebase redirect result error:", error);
+      }
+
+      // 2. Now that the redirect is resolved, listen to steady-state changes.
+      if (isMounted) {
+        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          if (firebaseUser) {
+            const idToken = await firebaseUser.getIdToken();
+            localStorage.setItem("token", idToken);
+            setToken(idToken);
+            setUser(firebaseUser);
+          } else {
+            localStorage.removeItem("token");
+            setToken(null);
+            setUser(null);
+          }
+          // Only drop the loading curtain after we know the true state
+          setLoading(false);
+        });
+      }
+    };
+
+    checkRedirectAndListen();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // Proactively refresh the token every 50 minutes (Firebase tokens expire
