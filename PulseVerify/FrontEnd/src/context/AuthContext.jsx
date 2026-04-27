@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { auth } from "../firebase";
-import axios from "../utils/axios";
 
 const AuthContext = createContext(null);
 
@@ -24,21 +23,8 @@ export function AuthProvider({ children }) {
 
     const checkRedirectAndListen = async () => {
       try {
-        // 1. Check if we have a session on the backend (Passport)
-        try {
-          const response = await axios.get("/api/auth/me");
-          if (response.data.success && response.data.user && isMounted) {
-            setUser(response.data.user);
-            setLoading(false);
-            // If we have a backend session, we might not need Firebase state,
-            // but we'll let the listener below run too for compatibility.
-          }
-        } catch (err) {
-          // No backend session, expected for logged-out users
-          console.log("No active backend session found.");
-        }
-
-        // 2. Process any pending redirect from Google Sign-In (Firebase fallback)
+        // 1. Process any pending redirect from Google Sign-In first.
+        // This ensures loading stays true until Firebase finishes the redirect loop.
         const result = await getRedirectResult(auth);
         
         if (result && result.user && isMounted) {
@@ -46,12 +32,14 @@ export function AuthProvider({ children }) {
           localStorage.setItem("token", idToken);
           setToken(idToken);
           setUser(result.user);
+          // React Router (via LoginPage) will automatically handle the redirect
+          // to /vault once onAuthStateChanged sets loading to false.
         }
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        console.error("Firebase redirect result error:", error);
       }
 
-      // 3. Listen to Firebase steady-state changes.
+      // 2. Now that the redirect is resolved, listen to steady-state changes.
       if (isMounted) {
         unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
           if (firebaseUser) {
@@ -60,12 +48,11 @@ export function AuthProvider({ children }) {
             setToken(idToken);
             setUser(firebaseUser);
           } else {
-            // Only clear if we don't already have a backend user set
-            setUser(prev => {
-              if (prev && !prev.firebaseUid && !prev.uid) return prev; 
-              return null;
-            });
+            localStorage.removeItem("token");
+            setToken(null);
+            setUser(null);
           }
+          // Only drop the loading curtain after we know the true state
           setLoading(false);
         });
       }
@@ -96,12 +83,7 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   const logout = async () => {
-    try {
-      await signOut(auth);
-      await axios.get("/api/auth/logout");
-    } catch (err) {
-      console.warn("Logout sync failed:", err);
-    }
+    await signOut(auth);
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
